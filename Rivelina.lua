@@ -1,7 +1,7 @@
 -- Mr Articuno Rivelina
 if myHero.charName ~= "Riven" then return end
 
-local version = "0.46"
+local version = "0.47"
 local SCRIPT_NAME = "Rivelina"
 
 local AUTOUPDATE = true
@@ -23,6 +23,13 @@ if DOWNLOADING_SOURCELIB then print("Downloading required libraries, please wait
 if AUTOUPDATE then
   SourceUpdater(SCRIPT_NAME, version, "raw.github.com", "/gmlyra/BolScripts/master/"..SCRIPT_NAME..".lua", SCRIPT_PATH .. GetCurrentEnv().FILE_NAME, "/gmlyra/VersionFiles/master/"..SCRIPT_NAME..".version"):CheckUpdate()
 end
+
+local RequireI = Require("SourceLib")
+RequireI:Add("vPrediction", "https://raw.github.com/Hellsing/BoL/master/common/VPrediction.lua")
+RequireI:Add("SOW", "https://raw.github.com/Hellsing/BoL/master/common/SOW.lua")
+RequireI:Check()
+
+if RequireI.downloadNeeded == true then return end
 
 ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------
@@ -64,6 +71,7 @@ local MS_MEDIUM = 750
 
 
 -- Minhas Variaveis
+local comboStarted = 0
 local IM
 local ultStage = 0
 local P_Stack=0
@@ -75,10 +83,9 @@ local AnimationCancel={
   [1]=function() myHero:MoveTo(mousePos.x,mousePos.z) end, --"Move"
   [2]=function() SendChat('/l') end, --"Laugh"
   [3]=function() SendChat('/d') end, --"Dance"
-  [4]=function() SendChat('/l') end, --"Laugh"
-  [5]=function() SendChat('/t') end, --"Taunt"
-  [6]=function() SendChat('/j') end, --"joke"
-  [7]=function() end,
+  [4]=function() SendChat('/t') end, --"Taunt"
+  [5]=function() SendChat('/j') end, --"joke"
+  [6]=function() end,
 }
 
 -- List Escape
@@ -90,6 +97,8 @@ local list =
     {cast = true , spell = _E , x = mousePos.x , y = mousePos.y},
     {cast = true , spell = _Q , x = mousePos.x , y = mousePos.y}
   }
+
+---Combo lists
 
 -- Constantes
 
@@ -138,23 +147,64 @@ end
 
 function Menu()
   Config = scriptConfig("Rivelina", "MrArticuno")
+
   Config:addParam("ComboS", "Smart Combo", SCRIPT_PARAM_ONKEYDOWN, false, 32)
   Config:addParam("ComboE", "Combo Safe", SCRIPT_PARAM_ONKEYDOWN, false, string.byte('V'))
   Config:addParam("ComboA", "All in Combo", SCRIPT_PARAM_ONKEYDOWN, false, string.byte('C'))
-  Config:addParam("Harass", "Harasst", SCRIPT_PARAM_ONKEYDOWN, false, string.byte('A'))
+  Config:addParam("Harass", "Harass", SCRIPT_PARAM_ONKEYDOWN, false, string.byte('A'))
   Config:addParam("Escape", "Flee to Mouse", SCRIPT_PARAM_ONKEYDOWN, false, string.byte('X'))
   --Sub Menu
   Config:addSubMenu("Combo options", "ComboSub")
   Config:addSubMenu("KS", "KS")
   Config:addSubMenu("Draw", "Draw")
+  if _G.MMA_Target or _G.AutoCarry then
+  else
+    print('MMA or SAC not found Loading SOW')
+    Config:addSubMenu("SOW", "SOW")
+    --SOW
+    SOWi:LoadToMenu(Config.SOW)
+  end
+
   Config:addSubMenu("Extras", "Extras")
   --Combo options
-  Config.ComboSub:addParam("useR", "Ult in Combo", SCRIPT_PARAM_ONOFF, false)
+  Config.ComboSub:addParam("useR", "Ult in Combo", SCRIPT_PARAM_ONOFF, true)
   Config.ComboSub:addParam("weaving", "Q>AA", SCRIPT_PARAM_ONOFF, false)
-  Config.ComboSub:addParam("Orbwalk", "Orbwalk", SCRIPT_PARAM_ONOFF, false)
-  Config.ComboSub:addParam("moveMouse", "Move To Mouse", SCRIPT_PARAM_ONOFF, false)
+  Config.ComboSub:addParam("Orbwalk", "Use OrbWalk (Turn of if MMA,SAC or SOW)", SCRIPT_PARAM_ONOFF, false)
+  Config.ComboSub:addParam("moveMouse", "Move To Mouse", SCRIPT_PARAM_ONOFF, true)
   --Extras
   Config.Extras:addParam("cancel", "Animation Cancel", SCRIPT_PARAM_LIST, 1, { "Move","Laugh","Dance","Taunt","joke","Nothing" })
+  AddProcessSpellCallback(function(unit, spell)
+    if not unit.isMe then return end
+
+    if Config.Harass then
+      if spell.name == 'RivenTriCleave' then -- _Q
+        DelayAction(function() SOWi:resetAA() end, nil)
+        AnimationCancel[Config.Extras.cancel]()
+      elseif spell.name == 'RivenMartyr' then -- _W
+        AnimationCancel[Config.Extras.cancel]()
+      end
+    end
+    if Config.ComboA then
+      if spell.name == 'RivenTriCleave' then -- _Q
+        DelayAction(function() SOWi:resetAA() end, nil)
+        AnimationCancel[Config.Extras.cancel]()
+      elseif spell.name == 'RivenMartyr' then -- _W
+        AnimationCancel[Config.Extras.cancel]()
+      elseif spell.name == 'RivenFeint'  then -- _E
+        --OnLy To OnTick Target
+        if  RReady then --AUTOMATIC R
+          SpellCast(_R)
+      end
+      if WReady and SpellCast(_W)== SPELLSTATE_TRIGGERED then
+        castItens()
+      end
+      AnimationCancel[Config.Extras.cancel]()
+      elseif spell.name == 'RivenFengShuiEngine' then -- _R first cast
+        AnimationCancel[Config.Extras.cancel]()
+      end
+    end
+  end)
+  Config.Extras:addParam("pCast", "Skill by Packet Faster/VIP Only", SCRIPT_PARAM_ONOFF, false)
   --KS
   Config.KS:addParam("useR", "Ult to KS", SCRIPT_PARAM_ONOFF, true)
   Config.KS:addParam("Ignite", "Use Ignite", SCRIPT_PARAM_ONOFF, true)
@@ -165,15 +215,19 @@ function Menu()
 end
 
 --Credit Trees
+
 function GetCustomTarget()
   ts:update()
   if _G.MMA_Target and _G.MMA_Target.type == myHero.type then return _G.MMA_Target end
   if _G.AutoCarry and _G.AutoCarry.Crosshair and _G.AutoCarry.Attack_Crosshair and _G.AutoCarry.Attack_Crosshair.target and _G.AutoCarry.Attack_Crosshair.target.type == myHero.type then return _G.AutoCarry.Attack_Crosshair.target end
   return ts.target
 end
+
 --End Credit Trees
 
 function OnLoad()
+  VP = VPrediction()
+  SOWi = SOW(VP)
   Menu()
   Init()
 end
@@ -198,7 +252,7 @@ function OnTick()
             ComboA(target)
           elseif Config.ComboE then
             ComboE(target)
-          else
+          elseif target.type == 'obj_AI_Hero' then
             Harass(target)
           end
         end
@@ -216,137 +270,103 @@ function OnTick()
   end
 end
 
+function chase(Target)
+  if GetDistance(Target) > 325 then
+    if EReady then SpellCast(_E, mousePos.x,mousePos.z) end
+    if QReady then SpellCast(_Q, mousePos.x,mousePos.z) end
+    if not QReady and not EReady and Config.ComboSub.moveMouse then myHero:MoveTo(mousePos.x,mousePos.z) end
+  end
+end
 
 function ComboA(Target)
 
-  if Config.ComboSub.useR and GetDistance(ts.target) <= 200 and RReady and ultStage == 0 then
-    finishWithUlt(Target)
+  if EReady then
+    SpellCast(_E, Target.x, Target.z)
   end
-
-  if GetDistance(Target) <= ranges.E then
-    CastSpell(_E, Target.x, Target.z)
-
-    if Config.ComboSub.useR and RReady and ultStage == 0 then
-      CastSpell(_R)
-    end
-
-    if GetDistance(Target) <= ranges.Q then
-      CastSpell(_W)
-    end
-
+  if RReady then
+    CastSpell(_R)
+  end
+  if WReady then
+    SpellCast(_W, Target.x, Target.z)
     castItens()
-
-    if GetDistance(Target) <= ranges.Q then
-      CastSpell(_Q, Target.x, Target.z)
-    end
-    if Config.ComboSub.useR and GetDistance(Target) <= 900 and RReady and ultStage == 1 then
-      CastSpell(_R, Target.x, Target.z)
-    end
-    if GetDistance(Target) <= ranges.Q then
-      CastSpell(_Q, Target.x, Target.z)
-    end
-    if GetDistance(Target) < ranges.AA + 200 then
-      --AnimationCancel[Config.cancel]()
-      myHero:Attack(Target)
-    end
-    if GetDistance(Target) <= ranges.Q then
-      CastSpell(_Q, Target.x, Target.z)
-    end
+  end
+  if QReady then
+    SpellCast(_Q, Target.x, Target.z)
+  end
+  if RReady then
+    forceUseUlt(Target)
+    SpellCast(_R, Target.x, Target.z)
+    SpellCast(_R, Target.x, Target.z)
+    SpellCast(_R, Target.x, Target.z)
+    SpellCast(_R, Target.x, Target.z)
+  end
+  if QReady then
+    SpellCast(_Q, Target.x, Target.z)
   end
 
 end
 
 function ComboE(Target)
 
-  if Config.ComboSub.useR and GetDistance(ts.target) <= 200 and RReady and ultStage == 0 then
+  if Config.ComboSub.useR and GetDistance(Target) <= 200 and RReady and ultStage == 0 then
     finishWithUlt(Target)
   end
 
   if GetDistance(Target) <= ranges.W and WReady then
-    CastSpell(_W)
+    SpellCast(_W)
     castItens()
   end
-
   if Config.ComboSub.weaving then
-    if QReady and GetDistance(Target) > 0 then
-      CastSpell(_Q,Target.x, Target.z)
-    end
-    if GetDistance(Target) < ranges.AA + 200 then
-      --AnimationCancel[Config.cancel]()
-      myHero:Attack(Target)
-    end
-    if WReady and GetDistance(Target) < ranges.AA then
-      CastSpell(_W)
-    end
-    if GetDistance(Target) < ranges.AA + 200 then
-      --AnimationCancel[Config.cancel]()
-      myHero:Attack(Target)
-    end
+    QWeaving(Target)
+  elseif QReady and GetDistance(Target) < ranges.Q then
+    SpellCast(_Q, Target.x, Target.z)
   end
 end
 
+--- Safe Combo
+--
+--
+
 function ComboS(Target)
 
-  if Config.ComboSub.useR and GetDistance(Target) <= 200 and RReady and ultStage == 0 then
+  if Config.ComboSub.useR and RReady then
     finishWithUlt(Target)
   end
 
   if EReady and GetDistance(Target) <= ranges.Q then
-    CastSpell(_E, Target.x, Target.z)
+    SpellCast(_E, Target.x, Target.z)
   end
   if Config.ComboSub.useR and GetDistance(Target) <= 200 and RReady and ultStage == 0 then
     finishWithUlt(Target)
-    CastSpell(_R)
+    SpellCast(_R)
   end
   if WReady and GetDistance(Target) <= ranges.W then
-    CastSpell(_W)
+    SpellCast(_W)
   end
   if GetDistance(Target) <= ranges.W then
     castItens()
   end
   if QReady and GetDistance(Target) <= ranges.Q then
-    CastSpell(_W)
+    SpellCast(_W)
   end
 
   if Config.ComboSub.weaving then
-    if EReady and GetDistance(Target) > ranges.AA then
-      CastSpell(_E, Target.x, Target.z)
-    end
-    if GetDistance(Target) < ranges.AA + 200 then
-      --AnimationCancel[Config.cancel]()
-      myHero:Attack(Target)
-    end
-    if QReady and GetDistance(Target) > 0 then
-      CastSpell(_Q,Target.x, Target.z)
-    end
-    if GetDistance(Target) < ranges.AA + 200 then
-      --AnimationCancel[Config.cancel]()
-      myHero:Attack(Target)
-    end
-    if WReady and GetDistance(Target) < ranges.AA then
-      CastSpell(_W)
-    end
-    if GetDistance(Target) < ranges.AA + 200 then
-      --AnimationCancel[Config.cancel]()
-      myHero:Attack(Target)
-    end
+    QWeaving(Target)
+  elseif QReady and GetDistance(Target) < ranges.Q then
+    SpellCast(_Q, Target.x, Target.z)
   end
 end
 
-function Harass(Target)
+--- Harras
+--
+--
 
-  if GetDistance(Target) <= ranges.E then
-    CastSpell(_E, Target.x, Target.z)
-    if GetDistance(Target) <= ranges.W then
-      CastSpell(_W)
-    end
-    castItens()
-    if GetDistance(Target) <= ranges.Q then
-      CastSpell(_Q, Target.x, Target.z)
-    end
-    if GetDistance(Target) < ranges.AA + 200 then
-      myHero:Attack(Target)
-    end
+function Harass(Target)
+  if WReady and GetDistance(Target) <= ranges.W then
+    SpellCast(_W)
+  end
+  if Config.ComboSub.weaving then
+    QWeaving(Target)
   end
 
 end
@@ -359,6 +379,31 @@ function TargetValid(target)
   end
 end
 
+function QWeaving(Target)
+
+  if GetDistance(Target) <= 325 then
+    SOWi:RegisterAfterAttackCallback(function(target,mode)
+      if target.type == 'obj_AI_Hero' and Config.Harass then
+        if EReady and not QReady then
+          SpellCast(_E, target.x, target.z)
+        end
+        if WReady  and GetDistance(target) <= ranges.W then
+          SpellCast(_W)
+        end
+        if QReady then
+          SpellCast(_Q, target.x, target.z)
+        end
+      end
+    end)
+    if GetDistance(Target) <= ranges.AA then
+      myHero:Attack(Target)
+    else
+      myHero:MoveTo(mousePos.x, mousePos.z)
+    end
+  end
+
+end
+
 function finishWithUlt(Target)
   if myHero:GetSpellData(_R).level ~= 0 and myHero:CanUseSpell(_R) == READY then
     for i=1, heroManager.iCount do
@@ -368,11 +413,11 @@ function finishWithUlt(Target)
         if TargetValid(enemy) then
           if RDamage > enemy.health and GetDistance(enemy) < 900 then
             if Config.ComboSub.useR then
-              CastSpell(_R, enemy.x, enemy.z)
+              SpellCast(_R, enemy.x, enemy.z)
             else
-              CastSpell(_R)
+              SpellCast(_R)
               if not enemy.dead then
-                CastSpell(_R, enemy.x, enemy.z)
+                SpellCast(_R, enemy.x, enemy.z)
               end
             end
           end
@@ -382,13 +427,36 @@ function finishWithUlt(Target)
   end
 end
 
+function forceUseUlt(Target)
+  if myHero:GetSpellData(_R).level ~= 0 and myHero:CanUseSpell(_R) == READY then
+    for i=1, heroManager.iCount do
+      local enemy = heroManager:GetHero(i)
+      if enemy.team ~= myHero.team and enemy ~= nil then
+        if TargetValid(enemy) then
+          if Config.ComboSub.useR then
+            SpellCast(_R, enemy.x, enemy.z)
+          else
+            SpellCast(_R)
+            if not enemy.dead then
+              SpellCast(_R, enemy.x, enemy.z)
+            end
+          end
+        end
+      end
+    end
+  end
+end
+
+
 function spellSequence(list)
   if list ~= nil and #list > 0 then
     for i=1, #list do
-      if list[i].cast then
-        CastSpell(list[i].spell, list[i].x, list[i].y)
+      if list[i].item then
+        castItens()
+      elseif list[i].cast then
+        SpellCast(list[i].spell, list[i].x, list[i].y)
       else
-        CastSpell(list[i].spell, list[i].x, list[i].y)
+        SpellCast(list[i].spell)
       end
     end
   end
@@ -399,9 +467,9 @@ function Escape()
   if QReady and EReady then
     spellSequence(list)
   elseif EReady then
-    CastSpell(_E,mousePos.x,mousePos.z)
+    SpellCast(_E,mousePos.x,mousePos.z)
   elseif QReady then
-    CastSpell(_Q,mousePos.x,mousePos.z)
+    SpellCast(_Q,mousePos.x,mousePos.z)
   end
   return
 
@@ -460,7 +528,7 @@ function IgniteKS()
     local Enemies = GetEnemyHeroes()
     for idx,val in ipairs(Enemies) do
       if ValidTarget(val, 600) then
-        if getDmg("IGNITE", val, myHero) > val.health and RReady ~= true and GetDistance(val) > 400 then
+        if getDmg("IGNITE", val, myHero) > val.health and RReady ~= true and GetDistance(val) >= 530 then
           CastSpell(ignite, val)
         end
       end
@@ -485,15 +553,8 @@ function Checks()
   igniteReady = (ignite ~= nil and myHero:CanUseSpell(ignite) == READY)
 end
 
-
 function OnProcessSpell(unit, spell)
-  if unit == myHero then
-    if spell.name:lower():find("attack") then
-      lastAttack = GetTickCount() - GetLatency()/2
-      lastWindUpTime = spell.windUpTime*1000
-      lastAttackCD = spell.animationTime*1000
-    end
-  end
+
 end
 
 --Start Manciuszz orbwalker credit
@@ -550,17 +611,16 @@ function castItens()
   local HYDRAREADY = (HYDRASlot ~= nil and myHero:CanUseSpell(HYDRASlot) == READY)
 
   if TIAMATREADY then
-    CastSpell(TIAMATSlot)
+    SpellCast(TIAMATSlot)
     return
   end
 
   if HYDRAREADY then
-    CastSpell(HYDRASlot)
+    SpellCast(HYDRASlot)
     return
   end
 
 end
-
 
 function _calcHeroVelocity(target, oldPosx, oldPosz, oldTick)
   if oldPosx and oldPosz and target.x and target.z then
@@ -601,3 +661,16 @@ function CountEnemyNearPerson(person,vrange)
   return count
 end
 --End Credit Xetrok
+
+function SpellCast(spell, posx, posz)
+  if Config.Extras.pCast and VIP_USER then
+    Packet('S_CAST', { spellId = spell, fromX = posx, fromY = posz}):send()
+  else
+    if posx == nil or posz == nill then
+      CastSpell(spell)
+    else
+      CastSpell(spell, posx, posz)
+      Config.Extras.pCast = false
+    end
+  end
+end
