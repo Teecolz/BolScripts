@@ -7,7 +7,7 @@
 if myHero.charName ~= "Riven" then return end
 
 
-local version = 0.5
+local version = 0.51
 local AUTOUPDATE = true
 
 -------------------------------------------------------------------------------------------------------------------------------
@@ -24,7 +24,7 @@ end
 if DOWNLOADING_SOURCELIB then print("Downloading required libraries, please wait...") return end
 
 if AUTOUPDATE then
-	SourceUpdater(SCRIPT_NAME, version, "raw.github.com", "/Lillgoalie/Rivelina/blob/master/"..SCRIPT_NAME..".lua", SCRIPT_PATH .. GetCurrentEnv().FILE_NAME, "/Lillgoalie/Rivelina/blob/master/"..SCRIPT_NAME..".version"):CheckUpdate()
+	SourceUpdater(SCRIPT_NAME, version, "raw.github.com", "/gmlyra/blob/master/"..SCRIPT_NAME..".lua", SCRIPT_PATH .. GetCurrentEnv().FILE_NAME, "/gmlyra/blob/master/"..SCRIPT_NAME..".version"):CheckUpdate()
 end
 
 local RequireI = Require("SourceLib")
