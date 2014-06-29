@@ -1,27 +1,30 @@
--- Mr Articuno Rivelina
+--[[
+
+[Riven] Rivelina made by Lillgoalie & Mr Articuno
+
+]]
+
 if myHero.charName ~= "Riven" then return end
 
-local version = "0.47"
-local SCRIPT_NAME = "Rivelina"
 
+local version = 0.5
 local AUTOUPDATE = true
----------------------------------------------------------------------------------------------------------------------------------------------------------------------------
----------------------------------------------------------------------------------------------------------------------------------------------------------------------------
----------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
+-------------------------------------------------------------------------------------------------------------------------------
+local SCRIPT_NAME = "Rivelina"
 local SOURCELIB_URL = "https://raw.github.com/TheRealSource/public/master/common/SourceLib.lua"
 local SOURCELIB_PATH = LIB_PATH.."SourceLib.lua"
 if FileExist(SOURCELIB_PATH) then
-  require("SourceLib")
+	require("SourceLib")
 else
-  DOWNLOADING_SOURCELIB = true
-  DownloadFile(SOURCELIB_URL, SOURCELIB_PATH, function() print("Required libraries downloaded successfully, please reload") end)
+	DOWNLOADING_SOURCELIB = true
+	DownloadFile(SOURCELIB_URL, SOURCELIB_PATH, function() print("Required libraries downloaded successfully, please reload") end)
 end
 
 if DOWNLOADING_SOURCELIB then print("Downloading required libraries, please wait...") return end
 
 if AUTOUPDATE then
-  SourceUpdater(SCRIPT_NAME, version, "raw.github.com", "/gmlyra/BolScripts/master/"..SCRIPT_NAME..".lua", SCRIPT_PATH .. GetCurrentEnv().FILE_NAME, "/gmlyra/VersionFiles/master/"..SCRIPT_NAME..".version"):CheckUpdate()
+	SourceUpdater(SCRIPT_NAME, version, "raw.github.com", "/Lillgoalie/Rivelina/blob/master/"..SCRIPT_NAME..".lua", SCRIPT_PATH .. GetCurrentEnv().FILE_NAME, "/Lillgoalie/Rivelina/blob/master/"..SCRIPT_NAME..".version"):CheckUpdate()
 end
 
 local RequireI = Require("SourceLib")
@@ -30,647 +33,644 @@ RequireI:Add("SOW", "https://raw.github.com/Hellsing/BoL/master/common/SOW.lua")
 RequireI:Check()
 
 if RequireI.downloadNeeded == true then return end
+-------------------------------------------------------------------------------------------------------------------------------
 
----------------------------------------------------------------------------------------------------------------------------------------------------------------------------
----------------------------------------------------------------------------------------------------------------------------------------------------------------------------
----------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+require 'VPrediction'
+require 'SOW'
 
---Start Vadash Credit
-class 'Kalman' -- {
-function Kalman:__init()
-  self.current_state_estimate = 0
-  self.current_prob_estimate = 0
-  self.Q = 1
-  self.R = 15
-end
-function Kalman:STEP(control_vector, measurement_vector)
-  local predicted_state_estimate = self.current_state_estimate + control_vector
-  local predicted_prob_estimate = self.current_prob_estimate + self.Q
-  local innovation = measurement_vector - predicted_state_estimate
-  local innovation_covariance = predicted_prob_estimate + self.R
-  local kalman_gain = predicted_prob_estimate / innovation_covariance
-  self.current_state_estimate = predicted_state_estimate + kalman_gain * innovation
-  self.current_prob_estimate = (1 - kalman_gain) * predicted_prob_estimate
-  return self.current_state_estimate
-end
-
---[[ Velocities ]]
-local kalmanFilters = {}
-local velocityTimers = {}
-local oldPosx = {}
-local oldPosz = {}
-local oldTick = {}
-local velocity = {}
-local lastboost = {}
-local velocity_TO = 10
-local CONVERSATION_FACTOR = 975
-local MS_MIN = 500
-local MS_MEDIUM = 750
-
---End Vadash Credit
-
-
--- Minhas Variaveis
-local comboStarted = 0
-local IM
-local ultStage = 0
-local P_Stack=0
-local P_BuffName="rivenpassiveaaboost"
-local Q_BuffName="RivenTriCleave"
-local R_BuffName='RivenFengShuiEngine'
-
-local AnimationCancel={
-  [1]=function() myHero:MoveTo(mousePos.x,mousePos.z) end, --"Move"
-  [2]=function() SendChat('/l') end, --"Laugh"
-  [3]=function() SendChat('/d') end, --"Dance"
-  [4]=function() SendChat('/t') end, --"Taunt"
-  [5]=function() SendChat('/j') end, --"joke"
-  [6]=function() end,
+--- Constants ---
+local QREADY, WREADY, EREADY, RREADY = false, false, false, false
+local ignite, igniteReady = nil, nil
+local ts
+local VP = nil
+local qOff, wOff, eOff, rOff = 0,0,0,0
+local abilitySequence = {1, 2, 3, 1, 1, 4, 1, 3, 1, 3, 4, 3, 3, 2, 2, 4, 2, 2}
+local Ranges = { Q = 260 + 100, W = 250, E = 325, R = 880 , AA = 250}
+local AnimationCancel =
+{
+	[1]=function() myHero:MoveTo(mousePos.x,mousePos.z) end, --"Move"
+	[2]=function() SendChat('/l') end, --"Laugh"
+	[3]=function() SendChat('/d') end, --"Dance"
+	[4]=function() SendChat('/t') end, --"Taunt"
+	[5]=function() SendChat('/j') end, --"joke"
+	[6]=function() end,
 }
 
--- List Escape
-
-local list =
-  {
-    {cast = true , spell = _Q , x = mousePos.x , y = mousePos.y},
-    {cast = true , spell = _Q , x = mousePos.x , y = mousePos.y},
-    {cast = true , spell = _E , x = mousePos.x , y = mousePos.y},
-    {cast = true , spell = _Q , x = mousePos.x , y = mousePos.y}
-  }
-
----Combo lists
-
--- Constantes
-
-local ranges = { AA = 125, Q = 260, W = 125, E = 325, R = 900 }
-
---
-local initDone, target1 = false, nil
-local lastAnimation = nil
-local lastAttack = 0
-local lastAttackCD = 0
-local ignite
-local lastWindUpTime = 0
-local Target
-local eneplayeres = {}
-local Config
-local QReady, WReady, EReady, RReady = false, false, false, false
-local informationTable = {}
-local spellExpired = true
-local ignite, igniteReady = nil, nil
-
-function Init()
-  --print('Init called')
-  --Start Vadash Credit
-  for i = 1, heroManager.iCount do
-    local hero = heroManager:GetHero(i)
-    if hero.team ~= player.team then
-      table.insert(eneplayeres, hero)
-      kalmanFilters[hero.networkID] = Kalman()
-      velocityTimers[hero.networkID] = 0
-      oldPosx[hero.networkID] = 0
-      oldPosz[hero.networkID] = 0
-      oldTick[hero.networkID] = 0
-      velocity[hero.networkID] = 0
-      lastboost[hero.networkID] = 0
-    end
-  end
-  --End Vadash Credit
-  ts = TargetSelector(TARGET_LESS_CAST_PRIORITY, 650, DAMAGE_PHYSICAL)
-  ts.name = "Target"
-  Config:addTS(ts)
-  EnemyMinions = minionManager(MINION_ENEMY, 1200, myHero, MINION_SORT_MAXHEALTH_DEC)
-  JungleMinions = minionManager(MINION_JUNGLE, 1200, myHero, MINION_SORT_MAXHEALTH_DEC)
-  initDone = true
-  print('Mr Articuno Rivelina ')
-end
-
-function Menu()
-  Config = scriptConfig("Rivelina", "MrArticuno")
-
-  Config:addParam("ComboS", "Smart Combo", SCRIPT_PARAM_ONKEYDOWN, false, 32)
-  Config:addParam("ComboE", "Combo Safe", SCRIPT_PARAM_ONKEYDOWN, false, string.byte('V'))
-  Config:addParam("ComboA", "All in Combo", SCRIPT_PARAM_ONKEYDOWN, false, string.byte('C'))
-  Config:addParam("Harass", "Harass", SCRIPT_PARAM_ONKEYDOWN, false, string.byte('A'))
-  Config:addParam("Escape", "Flee to Mouse", SCRIPT_PARAM_ONKEYDOWN, false, string.byte('X'))
-  --Sub Menu
-  Config:addSubMenu("Combo options", "ComboSub")
-  Config:addSubMenu("KS", "KS")
-  Config:addSubMenu("Draw", "Draw")
-  if _G.MMA_Target or _G.AutoCarry then
-  else
-    print('MMA or SAC not found Loading SOW')
-    Config:addSubMenu("SOW", "SOW")
-    --SOW
-    SOWi:LoadToMenu(Config.SOW)
-  end
-
-  Config:addSubMenu("Extras", "Extras")
-  --Combo options
-  Config.ComboSub:addParam("useR", "Ult in Combo", SCRIPT_PARAM_ONOFF, true)
-  Config.ComboSub:addParam("weaving", "Q>AA", SCRIPT_PARAM_ONOFF, false)
-  Config.ComboSub:addParam("Orbwalk", "Use OrbWalk (Turn of if MMA,SAC or SOW)", SCRIPT_PARAM_ONOFF, false)
-  Config.ComboSub:addParam("moveMouse", "Move To Mouse", SCRIPT_PARAM_ONOFF, true)
-  --Extras
-  Config.Extras:addParam("cancel", "Animation Cancel", SCRIPT_PARAM_LIST, 1, { "Move","Laugh","Dance","Taunt","joke","Nothing" })
-  AddProcessSpellCallback(function(unit, spell)
-    if not unit.isMe then return end
-
-    if Config.Harass then
-      if spell.name == 'RivenTriCleave' then -- _Q
-        DelayAction(function() SOWi:resetAA() end, nil)
-        AnimationCancel[Config.Extras.cancel]()
-      elseif spell.name == 'RivenMartyr' then -- _W
-        AnimationCancel[Config.Extras.cancel]()
-      end
-    end
-    if Config.ComboA then
-      if spell.name == 'RivenTriCleave' then -- _Q
-        DelayAction(function() SOWi:resetAA() end, nil)
-        AnimationCancel[Config.Extras.cancel]()
-      elseif spell.name == 'RivenMartyr' then -- _W
-        AnimationCancel[Config.Extras.cancel]()
-      elseif spell.name == 'RivenFeint'  then -- _E
-        --OnLy To OnTick Target
-        if  RReady then --AUTOMATIC R
-          SpellCast(_R)
-      end
-      if WReady and SpellCast(_W)== SPELLSTATE_TRIGGERED then
-        castItens()
-      end
-      AnimationCancel[Config.Extras.cancel]()
-      elseif spell.name == 'RivenFengShuiEngine' then -- _R first cast
-        AnimationCancel[Config.Extras.cancel]()
-      end
-    end
-  end)
-  Config.Extras:addParam("pCast", "Skill by Packet Faster/VIP Only", SCRIPT_PARAM_ONOFF, false)
-  --KS
-  Config.KS:addParam("useR", "Ult to KS", SCRIPT_PARAM_ONOFF, true)
-  Config.KS:addParam("Ignite", "Use Ignite", SCRIPT_PARAM_ONOFF, true)
-  --Draw
-  Config.Draw:addSubMenu("Drawings", "Drawings")
-
-  --Permashow
-end
-
---Credit Trees
-
-function GetCustomTarget()
-  ts:update()
-  if _G.MMA_Target and _G.MMA_Target.type == myHero.type then return _G.MMA_Target end
-  if _G.AutoCarry and _G.AutoCarry.Crosshair and _G.AutoCarry.Attack_Crosshair and _G.AutoCarry.Attack_Crosshair.target and _G.AutoCarry.Attack_Crosshair.target.type == myHero.type then return _G.AutoCarry.Attack_Crosshair.target end
-  return ts.target
-end
-
---End Credit Trees
+local QREADY, WREADY, EREADY, RREADY  = false, false, false, false
+local BRKSlot, DFGSlot, HXGSlot, BWCSlot, TMTSlot, RAHSlot, RNDSlot, YGBSlot = nil, nil, nil, nil, nil, nil, nil, nil
+local BRKREADY, DFGREADY, HXGREADY, BWCREADY, TMTREADY, RAHREADY, RNDREADY, YGBREADY = false, false, false, false, false, false, false, false
 
 function OnLoad()
-  VP = VPrediction()
-  SOWi = SOW(VP)
-  Menu()
-  Init()
+	initComponents()
+end
+
+function initComponents()
+	-- VPrediction Start
+	VP = VPrediction()
+	-- SOW Declare
+	Orbwalker = SOW(VP)
+	-- Target Selector
+	ts = TargetSelector(TARGET_NEAR_MOUSE, 900)
+	
+	Menu = scriptConfig("Rivelina by Lillgoalie & Mr Articuno", "RivenBLMA")
+	
+	Menu:addSubMenu("["..myHero.charName.." - Orbwalker]", "SOWorb")
+	Orbwalker:LoadToMenu(Menu.SOWorb)
+	
+	Menu:addSubMenu("["..myHero.charName.." - Combo]", "RivenCombo")
+	Menu.RivenCombo:addParam("combo", "Combo mode", SCRIPT_PARAM_ONKEYDOWN, false, 32)
+	-- Menu.RivenCombo:addParam("useF", "Use Flash in Combo ", SCRIPT_PARAM_ONOFF, false)
+	Menu.RivenCombo:addSubMenu("Q Settings", "qSet")
+	Menu.RivenCombo.qSet:addParam("useQ", "Use Q in combo", SCRIPT_PARAM_ONOFF, true)
+	Menu.RivenCombo:addSubMenu("W Settings", "wSet")
+	Menu.RivenCombo.wSet:addParam("useW", "Use W in combo", SCRIPT_PARAM_ONOFF, true)
+	Menu.RivenCombo:addSubMenu("E Settings", "eSet")
+	Menu.RivenCombo.eSet:addParam("useE", "Use E in combo", SCRIPT_PARAM_ONOFF, true)
+	Menu.RivenCombo:addSubMenu("R Settings", "rSet")
+	Menu.RivenCombo.rSet:addParam("useWeaving", "Use R on Q>AA", SCRIPT_PARAM_ONOFF, true)
+	Menu.RivenCombo.rSet:addParam("useR", "Use R in Combo", SCRIPT_PARAM_LIST, 1, { "ALWAYS", "KILLABLE", "NEVER"})
+	Menu.RivenCombo.rSet:addParam("rRange", "Maximum range to cast R", SCRIPT_PARAM_SLICE, 850, 400, 900, 0)
+	
+	Menu:addSubMenu("["..myHero.charName.." - Harass]", "Harass")
+	Menu.Harass:addParam("harass", "Harass", SCRIPT_PARAM_ONKEYDOWN, false, string.byte("G"))
+	Menu.Harass:addParam("useQ", "Use Q in Harass", SCRIPT_PARAM_ONOFF, true)
+	Menu.Harass:addParam("useW", "Use W in Harass", SCRIPT_PARAM_ONOFF, true)
+	Menu.Harass:addParam("useE", "Use E in Harass", SCRIPT_PARAM_ONOFF, true)
+	
+	Menu:addSubMenu("["..myHero.charName.." - Laneclear]", "Laneclear")
+	Menu.Laneclear:addParam("lclr", "Laneclear Key", SCRIPT_PARAM_ONKEYDOWN, false, string.byte("V"))
+	Menu.Laneclear:addParam("useClearQ", "Use Q in Laneclear", SCRIPT_PARAM_ONOFF, true)
+	Menu.Laneclear:addParam("useClearW", "Use W in Laneclear", SCRIPT_PARAM_ONOFF, true)
+	Menu.Laneclear:addParam("useClearE", "Use E in Laneclear", SCRIPT_PARAM_ONOFF, true)
+	
+	Menu:addSubMenu("["..myHero.charName.." - Jungleclear]", "Jungleclear")
+	Menu.Jungleclear:addParam("jclr", "Jungleclear Key", SCRIPT_PARAM_ONKEYDOWN, false, string.byte("V"))
+	Menu.Jungleclear:addParam("useClearQ", "Use Q in Jungleclear", SCRIPT_PARAM_ONOFF, true)
+	Menu.Jungleclear:addParam("useClearW", "Use W in Jungleclear", SCRIPT_PARAM_ONOFF, true)
+	Menu.Jungleclear:addParam("useClearE", "Use E in Jungleclear", SCRIPT_PARAM_ONOFF, true)
+	
+	Menu:addSubMenu("["..myHero.charName.." - Additionals]", "Ads")
+	Menu.Ads:addParam("cancel", "Animation Cancel", SCRIPT_PARAM_LIST, 1, { "Move","Laugh","Dance","Taunt","joke","Nothing" })
+	AddProcessSpellCallback(function(unit, spell)
+		animationCancel(unit, spell)
+	end)
+	Menu.Ads:addParam("autoLevel", "Auto-Level Spells", SCRIPT_PARAM_ONOFF, false)
+	Menu.Ads:addSubMenu("Escape", "escapeMenu")
+	Menu.Ads.escapeMenu:addParam("escapeKey", "Escape Key", SCRIPT_PARAM_ONKEYDOWN, false, string.byte("C"))
+	Menu.Ads:addParam("weaving", "Q>AA", SCRIPT_PARAM_ONOFF, true)
+	Menu.Ads:addParam("hitOnly", "Only Q if hits", SCRIPT_PARAM_ONOFF, true)
+	Menu.Ads:addSubMenu("Killsteal", "KS")
+	Menu.Ads.KS:addParam("useR", "Use Ultimate", SCRIPT_PARAM_ONOFF, true)
+	Menu.Ads.KS:addParam("ignite", "Use Ignite", SCRIPT_PARAM_ONOFF, false)
+	Menu.Ads.KS:addParam("igniteRange", "Minimum range to cast Ignite", SCRIPT_PARAM_SLICE, 470, 0, 600, 0)
+	Menu.Ads:addSubMenu("VIP", "VIP")
+	Menu.Ads.VIP:addParam("skin", "Use custom skin (Requires Reload)", SCRIPT_PARAM_ONOFF, false)
+	Menu.Ads.VIP:addParam("skin1", "Skin changer", SCRIPT_PARAM_SLICE, 1, 1, 7)
+	Menu.Ads.VIP:addParam("pCast", "Use packets (VIP Only)", SCRIPT_PARAM_ONOFF, false)
+	
+	Menu:addSubMenu("["..myHero.charName.." - Target Selector]", "targetSelector")
+	Menu.targetSelector:addTS(ts)
+	ts.name = "Focus"
+	
+	Menu:addSubMenu("["..myHero.charName.." - Drawings]", "drawings")
+	local DManager = DrawManager()
+	DManager:CreateCircle(myHero, Ranges.AA, 1, {255, 0, 255, 0}):AddToMenu(Menu.drawings,"AA range", true, true, true)
+	DManager:CreateCircle(myHero, Ranges.Q, 1, {255, 0, 255, 0}):AddToMenu(Menu.drawings,"Q range", true, true, true)
+	DManager:CreateCircle(myHero, Ranges.W, 1, {255, 0, 255, 0}):AddToMenu(Menu.drawings,"W range", true, true, true)
+	DManager:CreateCircle(myHero, Ranges.E, 1, {255, 0, 255, 0}):AddToMenu(Menu.drawings,"E range", true, true, true)
+	DManager:CreateCircle(myHero, Ranges.R, 1, {255, 0, 255, 0}):AddToMenu(Menu.drawings,"R range", true, true, true)
+	
+	enemyMinions = minionManager(MINION_ENEMY, 360, myHero, MINION_SORT_MAXHEALTH_DEC)
+	allyMinions = minionManager(MINION_ALLY, 360, myHero, MINION_SORT_MAXHEALTH_DEC)
+	jungleMinions = minionManager(MINION_JUNGLE, 360, myHero, MINION_SORT_MAXHEALTH_DEC)
+	
+	if Menu.Ads.VIP.skin and VIP_USER then
+		GenModelPacket("Riven", Menu.Ads.VIP.skin1)
+	end
+	
+	PrintChat("<font color = \"#33CCCC\">Rivelina by</font> <font color = \"#fff8e7\">Lillgoalie</font> <font color = \"#33CCCC\">&</font> <font color = \"#fff8e7\">Mr Articuno</font>")
 end
 
 function OnTick()
-  if initDone then
-    Checks()
-    target = GetCustomTarget()
-    KillSteal()
-    EnemyMinions:update()
-    JungleMinions:update()
-    if Config.ComboS or Config.ComboA or Config.ComboE or Config.Harass then
-      if target ~= nil and ValidTarget(target) then
-        if ValidTarget(target) and target ~= nil then
-          if TargetValid(target) == false then
-            ts:update()
-            target = ts.target
-          end
-          if Config.ComboS then
-            ComboS(target)
-          elseif Config.ComboA then
-            ComboA(target)
-          elseif Config.ComboE then
-            ComboE(target)
-          elseif target.type == 'obj_AI_Hero' then
-            Harass(target)
-          end
-        end
-        if Config.ComboSub.Orbwalk and ValidTarget(target) and target ~= nil then
-          OrbWalking(target)
-        end
-      else
-        if Config.ComboSub.moveMouse then myHero:MoveTo(mousePos.x,mousePos.z) end
-      end
-    end
-    if Config.Escape then
-      Escape()
-    end
-
-  end
+	ts:update()
+	enemyMinions:update()
+	allyMinions:update()
+	jungleMinions:update()
+	CDHandler()
+	KillSteal()
+  
+  	DFGSlot, HXGSlot, BWCSlot, SheenSlot, TrinitySlot, LichBaneSlot, BRKSlot, TMTSlot, RAHSlot, RNDSlot, STDSlot = GetInventorySlotItem(3128), GetInventorySlotItem(3146), GetInventorySlotItem(3144), GetInventorySlotItem(3057), GetInventorySlotItem(3078), GetInventorySlotItem(3100), GetInventorySlotItem(3153), GetInventorySlotItem(3077), GetInventorySlotItem(3074), GetInventorySlotItem(3143), GetInventorySlotItem(3131)
+    QREADY = (myHero:CanUseSpell(_Q) == READY)
+    WREADY = (myHero:CanUseSpell(_W) == READY)
+    EREADY = (myHero:CanUseSpell(_E) == READY)
+    RREADY = (myHero:CanUseSpell(_R) == READY)
+    DFGREADY = (DFGSlot ~= nil and myHero:CanUseSpell(DFGSlot) == READY)
+    HXGREADY = (HXGSlot ~= nil and myHero:CanUseSpell(HXGSlot) == READY)
+    BWCREADY = (BWCSlot ~= nil and myHero:CanUseSpell(BWCSlot) == READY)
+    BRKREADY = (BRKSlot ~= nil and myHero:CanUseSpell(BRKSlot) == READY)
+    TMTREADY = (TMTSlot ~= nil and myHero:CanUseSpell(TMTSlot) == READY)
+    RAHREADY = (RAHSlot ~= nil and myHero:CanUseSpell(RAHSlot) == READY)
+    RNDREADY = (RNDSlot ~= nil and myHero:CanUseSpell(RNDSlot) == READY)
+    STDREADY = (STDSlot ~= nil and myHero:CanUseSpell(STDSlot) == READY)
+    IREADY = (ignite ~= nil and myHero:CanUseSpell(ignite) == READY)
+	
+	
+	if Menu.Ads.autoLevel then
+		AutoLevel()
+	end
+	
+	if Menu.Ads.escapeMenu.escapeKey then
+		EscapeMode()
+	end
+	
+	if Menu.RivenCombo.combo then
+		Combo()
+	end
+	
+	if Menu.Harass.harass then
+		Harass()
+	end
+	
+	if Menu.Laneclear.lclr then
+		LaneClear()
+	end
+	
+	if Menu.Jungleclear.jclr then
+		JungleClear()
+	end
+  
 end
 
-function chase(Target)
-  if GetDistance(Target) > 325 then
-    if EReady then SpellCast(_E, mousePos.x,mousePos.z) end
-    if QReady then SpellCast(_Q, mousePos.x,mousePos.z) end
-    if not QReady and not EReady and Config.ComboSub.moveMouse then myHero:MoveTo(mousePos.x,mousePos.z) end
-  end
+function CDHandler()
+	-- Spells
+	QREADY = (myHero:CanUseSpell(_Q) == READY)
+	WREADY = (myHero:CanUseSpell(_W) == READY)
+	EREADY = (myHero:CanUseSpell(_E) == READY)
+	RREADY = (myHero:CanUseSpell(_R) == READY)
+	-- Items
+	tiamatSlot = GetInventorySlotItem(3077)
+	hydraSlot = GetInventorySlotItem(3074)
+	youmuuSlot = GetInventorySlotItem(3142) 
+	bilgeSlot = GetInventorySlotItem(3144)
+	bladeSlot = GetInventorySlotItem(3153)
+	
+	tiamatReady = (tiamatSlot ~= nil and myHero:CanUseSpell(tiamatSlot) == READY)
+	hydraReady = (hydraSlot ~= nil and myHero:CanUseSpell(hydraSlot) == READY)
+	youmuuReady = (youmuuSlot ~= nil and myHero:CanUseSpell(youmuuSlot) == READY)
+	bilgeReady = (bilgeSlot ~= nil and myHero:CanUseSpell(bilgeSlot) == READY)
+	bladeReady = (bladeSlot ~= nil and myHero:CanUseSpell(bladeSlot) == READY)
+	-- Summoners
+	if myHero:GetSpellData(SUMMONER_1).name:find("SummonerDot") then
+		ignite = SUMMONER_1
+	elseif myHero:GetSpellData(SUMMONER_2).name:find("SummonerDot") then
+		ignite = SUMMONER_2
+	end
+	igniteReady = (ignite ~= nil and myHero:CanUseSpell(ignite) == READY)
 end
 
-function ComboA(Target)
+-- Harass --
 
-  if EReady then
-    SpellCast(_E, Target.x, Target.z)
-  end
-  if RReady then
-    CastSpell(_R)
-  end
-  if WReady then
-    SpellCast(_W, Target.x, Target.z)
-    castItens()
-  end
-  if QReady then
-    SpellCast(_Q, Target.x, Target.z)
-  end
-  if RReady then
-    forceUseUlt(Target)
-    SpellCast(_R, Target.x, Target.z)
-    SpellCast(_R, Target.x, Target.z)
-    SpellCast(_R, Target.x, Target.z)
-    SpellCast(_R, Target.x, Target.z)
-  end
-  if QReady then
-    SpellCast(_Q, Target.x, Target.z)
-  end
-
+function Harass()
+	local enemy = ts.target
+	
+	if enemy ~= nil and ValidTarget(enemy) then
+		if Menu.Harass.useE and EREADY then
+			SpellCast(_E, enemy.x, enemy.z)
+		end
+		if Menu.Harass.useW and ValidTarget(enemy, Ranges.W) and WREADY then
+			SpellCast(_W)
+      		ItemUsage()
+		end
+		if Menu.Harass.useQ and ValidTarget(enemy, Ranges.Q) and QREADY then
+			if Menu.Ads.weaving then
+				qWeaving(enemy)
+			end
+			if not Menu.Ads.weaving then
+				SpellCast(_Q, enemy.x, enemy.z)
+			end
+		end
+	end
+	
 end
 
-function ComboE(Target)
+-- End Harass --
 
-  if Config.ComboSub.useR and GetDistance(Target) <= 200 and RReady and ultStage == 0 then
-    finishWithUlt(Target)
-  end
 
-  if GetDistance(Target) <= ranges.W and WReady then
-    SpellCast(_W)
-    castItens()
-  end
-  if Config.ComboSub.weaving then
-    QWeaving(Target)
-  elseif QReady and GetDistance(Target) < ranges.Q then
-    SpellCast(_Q, Target.x, Target.z)
-  end
+-- Combo Selector --
+
+function Combo()
+	local typeCombo = 0
+	if ts.target ~= nil then
+		AllInCombo(ts.target, 0)
+	end
+	
+	--SmartCombo(ts.target)
 end
 
---- Safe Combo
---
---
+-- Combo Selector --
 
-function ComboS(Target)
+-- All In Combo -- E1RWQRQ
 
-  if Config.ComboSub.useR and RReady then
-    finishWithUlt(Target)
-  end
-
-  if EReady and GetDistance(Target) <= ranges.Q then
-    SpellCast(_E, Target.x, Target.z)
-  end
-  if Config.ComboSub.useR and GetDistance(Target) <= 200 and RReady and ultStage == 0 then
-    finishWithUlt(Target)
-    SpellCast(_R)
-  end
-  if WReady and GetDistance(Target) <= ranges.W then
-    SpellCast(_W)
-  end
-  if GetDistance(Target) <= ranges.W then
-    castItens()
-  end
-  if QReady and GetDistance(Target) <= ranges.Q then
-    SpellCast(_W)
-  end
-
-  if Config.ComboSub.weaving then
-    QWeaving(Target)
-  elseif QReady and GetDistance(Target) < ranges.Q then
-    SpellCast(_Q, Target.x, Target.z)
-  end
+function AllInCombo(target, typeCombo)
+	if target ~= nil and typeCombo == 0 then
+		-- Secured stun
+		if ValidTarget(target, Ranges.W - 20) and WREADY then
+			CastSpell(_W)
+		end
+		
+		-- E+W(+Q) Range Combo --
+		-- Initiate part
+		if ValidTarget(target, 900) and Menu.RivenCombo.eSet.useE and EREADY and WREADY then
+			SpellCast(_E, target.x, target.z)
+			DelayAction(function() end, 1500 - GetLatency())
+			ItemUsage()
+		end
+		-- Ultimate passive cast part
+		if RREADY and myHero:GetSpellData(_R).name == 'RivenFengShuiEngine' and ValidTarget(target, 360) then
+			if Menu.RivenCombo.rSet.useR == 1 then
+				SpellCast(_R)
+				DelayAction(function() end, 800 - GetLatency())
+			end
+			if Menu.RivenCombo.rSet.useR == 2 then
+				SpellCast(_R)
+				DelayAction(function() end, 800 - GetLatency())
+			end
+		end
+		-- W casting part with range checks
+		if ValidTarget(target, Ranges.W) and WREADY and Menu.RivenCombo.wSet.useW then
+			SpellCast(_W)
+		elseif ValidTarget(target, Ranges.Q + Ranges.W) and WREADY and QREADY and Menu.RivenCombo.qSet.useQ then
+			SpellCast(_Q, target.x, target.z)
+		elseif ValidTarget(target, Ranges.E + Ranges.W) and EREADY and Menu.RivenCombo.eSet.useE then
+			SpellCast(_E, target.x, target.z)
+			SpellCast(_W)
+		end
+		-- Ultimate active cast part
+		if ValidTarget(target, Menu.RivenCombo.rSet.rRange) and RREADY and myHero:GetSpellData(_R).name == 'rivenizunablade' then
+			if Menu.RivenCombo.rSet.useR == 1 and target ~= nil and ValidTarget(target, Menu.RivenCombo.rSet.rRange) then
+				SpellCast(_R, target.x, target.z)
+			end
+			if Menu.RivenCombo.rSet.useR == 2 then
+				for i, enemy in ipairs(GetEnemyHeroes()) do
+					rDmg = getDmg("R", enemy, myHero)
+					if enemy ~= nil and ValidTarget(enemy, Menu.RivenCombo.rSet.rRange) and enemy.health < rDmg then
+						SpellCast(_R, enemy.x, enemy.z)
+					end
+				end
+			end
+			DelayAction(function() end, 1000 - GetLatency())
+		end
+		if ValidTarget(target, Ranges.Q) and QREADY and Menu.RivenCombo.qSet.useQ then
+			SpellCast(_Q, target.x, target.z)
+		end
+		
+		-- E+W+Q Range Combo --
+		
+		-- E+Q+Q+W Range Combo --
+		if ValidTarget(target, 700) and GetDistance(target) > 500 then
+			if Menu.RivenCombo.qSet.useQ and QREADY then
+				SpellCast(_Q, target.x, target.z)
+			end
+		end
+		
+		-- E+Q+Q+W Range Combo --
+		
+		
+		-- E+Q+Q+Q+W Range Combo --
+		if ValidTarget(target, 900) and GetDistance(target) > 700 then
+			if Menu.RivenCombo.qSet.useQ and QREADY then
+				SpellCast(_Q, target.x, target.z)
+			end
+		end
+		
+		-- E+Q+Q+Q+W Range Combo --
+	end
 end
 
---- Harras
---
---
+-- All In Combo --
 
-function Harass(Target)
-  if WReady and GetDistance(Target) <= ranges.W then
-    SpellCast(_W)
-  end
-  if Config.ComboSub.weaving then
-    QWeaving(Target)
-  end
+-- Combo Smart --
 
+function SmartCombo(target)
+	if target ~= nil and ValidTarget(target) then
+		if RREADY and Menu.RivenCombo.rSet.useR and ValidTarget(target, Ranges.R) then
+			rDmg = getDmg("R", target, myHero)
+			
+			if RREADY and target ~= nil and ValidTarget(target, Menu.RivenCombo.rSet.rRange) and target.health <= rDmg then
+				if myHero:GetSpellData(_R).name == 'RivenFengShuiEngine' then
+					CastSpell(_R)
+				end
+				if myHero:GetSpellData(_R).name == 'rivenizunablade' then
+					SpellCast(_R, target.x, target.z)
+				end
+			end
+		end
+		
+		if Menu.Ads.weaving and QREADY and Menu.RivenCombo.qSet.useQ then
+			qWeaving(target)
+		else
+			SpellCast(_Q, target.x, target.z)
+		end
+		if Menu.RivenCombo.wSet.useW and ValidTarget(target, Ranges.W) and WREADY then
+			CastSpell(_W)
+		end
+		if EREADY and Menu.RivenCombo.eSet.useE and ValidTarget(target, Ranges.E) then
+			SpellCast(_E, target.x, target.z)
+		end
+	end
 end
 
-function TargetValid(target)
-  if target ~= nil and target.dead == false and target.team == TEAM_ENEMY and target.visible == true then
-    return true
-  else
-    return false
-  end
+-- End Combo Smart --
+
+function LaneClear()
+	for i, enemyMinion in pairs(enemyMinions.objects) do
+		for _, allyMinion in pairs(allyMinions.objects) do
+			if allyMinion ~= nil and enemyMinion ~= nil then
+				-- Ally minions there, no need for shield
+				if enemyMinion ~= nil and ValidTarget(enemyMinion) and Menu.Laneclear.useClearQ and QREADY then
+					if Menu.Ads.weaving then
+						qWeaving(enemyMinion)
+					else
+						if Menu.Ads.hitOnly then
+							if ValidTarget(enemyMinion, Ranges.Q) then
+								SpellCast(_Q, enemyMinion.x, enemyMinion.z)
+							end
+						else
+							if ValidTarget(enemyMinion, Ranges.Q) then
+								SpellCast(_Q, enemyMinion.x, enemyMinion.z)
+							end
+						end
+					end
+				end
+				if Menu.Laneclear.useClearW and WREADY and ValidTarget(enemyMinion, Ranges.W) then
+					CastSpell(_W)
+				end
+			end
+			if allyminion == nil and enemyMinion ~= nil then
+				-- Only enemy minions, need shield
+				
+				if Menu.Laneclear.useClearQ and QREADY then
+					if Menu.Ads.weaving then
+						qWeaving(enemyMinion)
+					else
+						if Menu.Ads.hitOnly then
+							if ValidTarget(enemyMinion, Ranges.Q) then
+								SpellCast(_Q, enemyMinion.x, enemyMinion.z)
+							end
+						else
+							SpellCast(_Q, enemyMinion.x, enemyMinion.z)
+						end
+					end
+				end
+				if Menu.Laneclear.useClearW and WREADY and ValidTarget(enemyMinion, Ranges.W) then
+					CastSpell(_W)
+				end
+			end
+		end
+	end
 end
 
-function QWeaving(Target)
-
-  if GetDistance(Target) <= 325 then
-    SOWi:RegisterAfterAttackCallback(function(target,mode)
-      if target.type == 'obj_AI_Hero' and Config.Harass then
-        if EReady and not QReady then
-          SpellCast(_E, target.x, target.z)
-        end
-        if WReady  and GetDistance(target) <= ranges.W then
-          SpellCast(_W)
-        end
-        if QReady then
-          SpellCast(_Q, target.x, target.z)
-        end
-      end
-    end)
-    if GetDistance(Target) <= ranges.AA then
-      myHero:Attack(Target)
-    else
-      myHero:MoveTo(mousePos.x, mousePos.z)
-    end
-  end
-
+function JungleClear()
+	for i, jungleMinion in pairs(jungleMinions.objects) do
+		if jungleMinion ~= nil then
+			if Menu.Jungleclear.useClearE and EREADY then
+				SpellCast(_E, jungleMinion.x, jungleMinion.z)
+			end
+			if Menu.Jungleclear.useClearQ and QREADY then
+				if Menu.Ads.weaving then
+					qWeaving(jungleMinion)
+				else
+					if Menu.Ads.hitOnly then
+						if ValidTarget(jungleMinion, Ranges.Q) then
+							SpellCast(_Q, jungleMinion.x, jungleMinion.z)
+						end
+					else
+						SpellCast(_Q, jungleMinion.x, jungleMinion.z)
+					end
+				end
+			end
+			if Menu.Jungleclear.useClearW and WREADY and ValidTarget(jungleMinion, Ranges.W) then
+				CastSpell(_W)
+			end
+		end
+	end
 end
 
-function finishWithUlt(Target)
-  if myHero:GetSpellData(_R).level ~= 0 and myHero:CanUseSpell(_R) == READY then
-    for i=1, heroManager.iCount do
-      local enemy = heroManager:GetHero(i)
-      if enemy.team ~= myHero.team and enemy ~= nil then
-        local RDamage = getDmg("R",enemy,myHero)
-        if TargetValid(enemy) then
-          if RDamage > enemy.health and GetDistance(enemy) < 900 then
-            if Config.ComboSub.useR then
-              SpellCast(_R, enemy.x, enemy.z)
-            else
-              SpellCast(_R)
-              if not enemy.dead then
-                SpellCast(_R, enemy.x, enemy.z)
-              end
-            end
-          end
-        end
-      end
-    end
-  end
-end
-
-function forceUseUlt(Target)
-  if myHero:GetSpellData(_R).level ~= 0 and myHero:CanUseSpell(_R) == READY then
-    for i=1, heroManager.iCount do
-      local enemy = heroManager:GetHero(i)
-      if enemy.team ~= myHero.team and enemy ~= nil then
-        if TargetValid(enemy) then
-          if Config.ComboSub.useR then
-            SpellCast(_R, enemy.x, enemy.z)
-          else
-            SpellCast(_R)
-            if not enemy.dead then
-              SpellCast(_R, enemy.x, enemy.z)
-            end
-          end
-        end
-      end
-    end
-  end
-end
-
-
-function spellSequence(list)
-  if list ~= nil and #list > 0 then
-    for i=1, #list do
-      if list[i].item then
-        castItens()
-      elseif list[i].cast then
-        SpellCast(list[i].spell, list[i].x, list[i].y)
-      else
-        SpellCast(list[i].spell)
-      end
-    end
-  end
-end
-
-function Escape()
-  myHero:MoveTo(mousePos.x,mousePos.z)
-  if QReady and EReady then
-    spellSequence(list)
-  elseif EReady then
-    SpellCast(_E,mousePos.x,mousePos.z)
-  elseif QReady then
-    SpellCast(_Q,mousePos.x,mousePos.z)
-  end
-  return
-
-end
-
-if VIP_USER then
-
-  function OnGainBuff(unit,buff)
-    if unit.isMe then
-      if buff.name==P_BuffName then
-        P_Stack=1
-      elseif buff.name==Q_BuffName then
-        Q_Sequence=1
-      elseif buff.name==R_BuffName then
-        R_ON_FLAG=false
-        R_ON=true
-      end
-    end
-  end
-
-  function OnLoseBuff(unit,buff)
-    if unit.isMe then
-      if buff.name==P_BuffName then
-        P_Stack=0
-      elseif buff.name=="RivenTriCleave" then
-        Q_Sequence=0
-      elseif buff.name==R_BuffName then
-        R_ON=false
-      end
-    end
-  end
-
-  function OnUpdateBuff(unit,buff)
-    if unit.isMe then
-      if buff.name=="RivenTriCleave" then
-        Q_Sequence=2
-      elseif buff.name==P_BuffName then
-        P_Stack=buff.stack
-      end
-    end
-  end
+function AutoLevel()
+	local qL, wL, eL, rL = player:GetSpellData(_Q).level + qOff, player:GetSpellData(_W).level + wOff, player:GetSpellData(_E).level + eOff, player:GetSpellData(_R).level + rOff
+	if qL + wL + eL + rL < player.level then
+		local spellSlot = { SPELL_1, SPELL_2, SPELL_3, SPELL_4, }
+		local level = { 0, 0, 0, 0 }
+		for i = 1, player.level, 1 do
+			level[abilitySequence[i]] = level[abilitySequence[i]] + 1
+		end
+		for i, v in ipairs({ qL, wL, eL, rL }) do
+			if v < level[i] then LevelSpell(spellSlot[i]) end
+		end
+	end
 end
 
 function KillSteal()
-  if Config.KS.useR then
-    finishWithUlt(Target)
-  end
-
-  if Config.KS.Ignite then
-    IgniteKS()
-  end
+	if Menu.Ads.KS.useR then
+		KSR()
+	end
+	if Menu.Ads.KS.ignite then
+		IgniteKS()
+	end
 end
 
+-- Use Ultimate to KS --
+
+function KSR()
+	for i, enemy in ipairs(GetEnemyHeroes()) do
+		rDmg = getDmg("R", enemy, myHero)
+		
+		if RREADY and enemy ~= nil and ValidTarget(enemy, Menu.RivenCombo.rSet.rRange) and enemy.health < rDmg then
+			if myHero:GetSpellData(_R).name == 'RivenFengShuiEngine' then
+				SpellCast(_R)
+			end
+			if myHero:GetSpellData(_R).name == 'rivenizunablade' then
+				SpellCast(_R, enemy.x, enemy.z)
+			end
+		end
+	end
+end
+
+-- Use Ultimate to KS --
+
+-- Auto Ignite get the maximum range to avoid over kill --
+
 function IgniteKS()
-  if igniteReady then
-    local Enemies = GetEnemyHeroes()
-    for idx,val in ipairs(Enemies) do
-      if ValidTarget(val, 600) then
-        if getDmg("IGNITE", val, myHero) > val.health and RReady ~= true and GetDistance(val) >= 530 then
-          CastSpell(ignite, val)
-        end
-      end
-    end
-  end
+	if igniteReady then
+		local Enemies = GetEnemyHeroes()
+		for i, val in ipairs(Enemies) do
+			if ValidTarget(val, 600) then
+				if getDmg("IGNITE", val, myHero) > val.health and RReady ~= true and GetDistance(val) >= Menu.Ads.KS.igniteRange then
+					CastSpell(ignite, val)
+				end
+			end
+		end
+	end
+end
+
+-- Auto Ignite --
+
+function EscapeMode()
+	myHero:MoveTo(mousePos.x, mousePos.z)
+	for i, enemy in ipairs(GetEnemyHeroes()) do
+		if enemy ~= nil and ValidTarget(enemy, Ranges.W) and WREADY then
+			CastSpell(_W)
+		end
+	end
+	
+	if EREADY then
+		SpellCast(_E, mousePos.x, mousePos.z)
+	end
+	
+	if QREADY and not EREADY then
+		if QREADY and not EREADY then
+			DelayAction(function() end, 1500 - GetLatency())
+			SpellCast(_Q, mousePos.x, mousePos.z)
+		end
+	end
+end
+
+function HealthCheck(unit, HealthValue)
+	if unit.health > (unit.maxHealth * (HealthValue/100)) then 
+		return true
+	else
+		return false
+	end
+end
+
+function qWeaving(Target)
+	Orbwalker:RegisterAfterAttackCallback(function(target,mode)
+		if target.type ~= 'obj_AI_Hero' and Menu.Jungleclear.jclr then
+			if QREADY then
+				if Menu.Ads.hitOnly then
+					if ValidTarget(target, Ranges.Q) then
+						SpellCast(_Q, target.x, target.z)
+					end
+				else
+					SpellCast(_Q, target.x, target.z)
+				end
+			end
+		end
+		if target.type ~= 'obj_AI_Hero' and Menu.Laneclear.lclr then
+			if QREADY then
+				if Menu.Ads.hitOnly then
+					if ValidTarget(target, Ranges.Q) then
+						SpellCast(_Q, target.x, target.z)
+					end
+				else
+					SpellCast(_Q, target.x, target.z)
+				end
+			end
+		end
+		if target.type == 'obj_AI_Hero' and Menu.Harass.harass then
+			if QREADY then
+				if Menu.Ads.hitOnly then
+					if ValidTarget(target, Ranges.Q) then
+						SpellCast(_Q, target.x, target.z)
+					end
+				else
+					SpellCast(_Q, target.x, target.z)
+				end
+			end
+		end
+		if target.type == 'obj_AI_Hero' and Menu.RivenCombo.combo then
+			if QREADY then
+				if RREADY and Menu.RivenCombo.rSet.useWeaving and myHero:GetSpellData(_R).name == 'RivenFengShuiEngine' then
+					CastSpell(_R)
+				end
+				if Menu.Ads.hitOnly then
+					if ValidTarget(target, Ranges.Q) then
+						SpellCast(_Q, target.x, target.z)
+					end
+				else
+					SpellCast(_Q, target.x, target.z)
+				end
+			end
+		end
+	end)
+end
+
+function animationCancel(unit, spell)
+	if not unit.isMe then return end
+	
+	if spell.name == 'RivenTriCleave' then -- _Q
+		DelayAction(function() SOW:resetAA() end, nil)
+		AnimationCancel[Menu.Ads.cancel]()
+	else
+		if spell.name == 'RivenMartyr' then -- _W
+			
+			AnimationCancel[Menu.Ads.cancel]()
+		else
+			if spell.name == 'RivenFeint' then -- _E
+				
+				AnimationCancel[Menu.Ads.cancel]()
+			else
+				if spell.name == 'RivenFengShuiEngine' then -- _R first cast
+					--AnimationCancel[Config.Extras.cancel]()
+				else
+					if spell.name == 'rivenizunablade' then -- _R Second cast
+						--AnimationCancel[Config.Extras.cancel]()
+					end
+				end
+			end
+		end
+	end
+end
+
+function SpellCast(spell, posx, posz)
+	if Menu.Ads.VIP.pCast and VIP_USER then
+		Packet('S_CAST', { spellId = spell, fromX = posx, fromY = posz}):send()
+	else
+		if posx == nil or posz == nil then
+			CastSpell(spell)
+		else
+			CastSpell(spell, posx, posz)
+		end
+	end
+end
+
+function ItemUsage(target)
+
+    if DFGREADY then CastSpell(DFGSlot, ts.target) end
+    if HXGREADY then CastSpell(HXGSlot, ts.target) end
+    if BWCREADY then CastSpell(BWCSlot, ts.target) end
+    if BRKREADY then CastSpell(BRKSlot, ts.target) end
+    if TMTREADY and GetDistance(ts.target) < 275 then CastSpell(TMTSlot) end
+    if RAHREADY and GetDistance(ts.target) < 275 then CastSpell(RAHSlot) end
+    if RNDREADY and GetDistance(ts.target) < 275 then CastSpell(RNDSlot) end
+  
+end
+
+-- Change skin function, made by Shalzuth
+function GenModelPacket(champ, skinId)
+	p = CLoLPacket(0x96)
+	p:EncodeF(myHero.networkID)
+	p.pos = 1
+	t1 = p:Decode1()
+	t2 = p:Decode1()
+	t3 = p:Decode1()
+	t4 = p:Decode1()
+	p:Encode1(t1)
+	p:Encode1(t2)
+	p:Encode1(t3)
+	p:Encode1(bit32.band(t4,0xB))
+	p:Encode1(1)--hardcode 1 bitfield
+	p:Encode4(skinId)
+	for i = 1, #champ do
+		p:Encode1(string.byte(champ:sub(i,i)))
+	end
+	for i = #champ + 1, 64 do
+		p:Encode1(0)
+	end
+	p:Hide()
+	RecvPacket(p)
 end
 
 function OnDraw()
-
-end
-
-function Checks()
-  QReady = (myHero:CanUseSpell(_Q) == READY)
-  WReady = (myHero:CanUseSpell(_W) == READY)
-  EReady = (myHero:CanUseSpell(_E) == READY)
-  RReady = (myHero:CanUseSpell(_R) == READY)
-  if myHero:GetSpellData(SUMMONER_1).name:find("SummonerDot") then
-    ignite = SUMMONER_1
-  elseif myHero:GetSpellData(SUMMONER_2).name:find("SummonerDot") then
-    ignite = SUMMONER_2
-  end
-  igniteReady = (ignite ~= nil and myHero:CanUseSpell(ignite) == READY)
-end
-
-function OnProcessSpell(unit, spell)
-
-end
-
---Start Manciuszz orbwalker credit
-function OrbWalking(target)
-  if TimeToAttack() and GetDistance(target) <= 565 then
-    myHero:Attack(target)
-  elseif heroCanMove() then
-    moveToCursor()
-  end
-end
-
-function TimeToAttack()
-  return (GetTickCount() + GetLatency()/2 > lastAttack + lastAttackCD)
-end
-
-function heroCanMove()
-  return (GetTickCount() + GetLatency()/2 > lastAttack + lastWindUpTime + 20)
-end
-
-function moveToCursor()
-  if GetDistance(mousePos) then
-    local moveToPos = myHero + (Vector(mousePos) - myHero):normalized()*300
-    myHero:MoveTo(moveToPos.x, moveToPos.z)
-  end
-end
-
-function OnAnimation(unit,animationName)
-  if unit.isMe and lastAnimation ~= animationName then lastAnimation = animationName end
-end
---End Manciuszz orbwalker credit
-
---Start Vadash Credit
-function HaveLowVelocity(target, time)
-  if ValidTarget(target, 1500) then
-    return (velocity[target.networkID] < MS_MIN and target.ms < MS_MIN and GetTickCount() - lastboost[target.networkID] > time)
-  else
-    return nil
-  end
-end
-
-function HaveMediumVelocity(target, time)
-  if ValidTarget(target, 1500) then
-    return (velocity[target.networkID] < MS_MEDIUM and target.ms < MS_MEDIUM and GetTickCount() - lastboost[target.networkID] > time)
-  else
-    return nil
-  end
-end
-
-function castItens()
-
-  local TIAMATSlot = GetInventorySlotItem(3077)
-  local TIAMATREADY = (TIAMATSlot ~= nil and myHero:CanUseSpell(TIAMATSlot) == READY)
-  local HYDRASlot = GetInventorySlotItem(3074)
-  local HYDRAREADY = (HYDRASlot ~= nil and myHero:CanUseSpell(HYDRASlot) == READY)
-
-  if TIAMATREADY then
-    SpellCast(TIAMATSlot)
-    return
-  end
-
-  if HYDRAREADY then
-    SpellCast(HYDRASlot)
-    return
-  end
-
-end
-
-function _calcHeroVelocity(target, oldPosx, oldPosz, oldTick)
-  if oldPosx and oldPosz and target.x and target.z then
-    local dis = math.sqrt((oldPosx - target.x) ^ 2 + (oldPosz - target.z) ^ 2)
-    velocity[target.networkID] = kalmanFilters[target.networkID]:STEP(0, (dis / (GetTickCount() - oldTick)) * CONVERSATION_FACTOR)
-  end
-end
-
-function UpdateSpeed()
-  local tick = GetTickCount()
-  for i=1, #eneplayeres do
-    local hero = eneplayeres[i]
-    if ValidTarget(hero) then
-      if velocityTimers[hero.networkID] <= tick and hero and hero.x and hero.z and (tick - oldTick[hero.networkID]) > (velocity_TO-1) then
-        velocityTimers[hero.networkID] = tick + velocity_TO
-        _calcHeroVelocity(hero, oldPosx[hero.networkID], oldPosz[hero.networkID], oldTick[hero.networkID])
-        oldPosx[hero.networkID] = hero.x
-        oldPosz[hero.networkID] = hero.z
-        oldTick[hero.networkID] = tick
-        if velocity[hero.networkID] > MS_MIN then
-          lastboost[hero.networkID] = tick
-        end
-      end
-    end
-  end
-end
---End Vadash Credit
-
---Credit Xetrok
-function CountEnemyNearPerson(person,vrange)
-  count = 0
-  for i=1, heroManager.iCount do
-    currentEnemy = heroManager:GetHero(i)
-    if currentEnemy.team ~= myHero.team then
-      if person:GetDistance(currentEnemy) <= vrange and not currentEnemy.dead then count = count + 1 end
-    end
-  end
-  return count
-end
---End Credit Xetrok
-
-function SpellCast(spell, posx, posz)
-  if Config.Extras.pCast and VIP_USER then
-    Packet('S_CAST', { spellId = spell, fromX = posx, fromY = posz}):send()
-  else
-    if posx == nil or posz == nill then
-      CastSpell(spell)
-    else
-      CastSpell(spell, posx, posz)
-      Config.Extras.pCast = false
-    end
-  end
+	
 end
