@@ -9,8 +9,20 @@
 
 ]]
 
-local function convert( chars, dist, inv )
-  return string.char( ( string.byte( chars ) - 32 + ( inv and -dist or dist ) ) % 95 + 32 )
+
+local hashKey = {124,532,123,22,20};
+
+local function convert(chars,dist,inv)
+  local charInt = string.byte(chars);
+  for i=1,dist do
+    if(inv)then charInt = charInt - 1; else charInt = charInt + 1; end
+    if(charInt<32)then
+      if(inv)then charInt = 126; else charInt = 126; end
+    elseif(charInt>126)then
+      if(inv)then charInt = 32; else charInt = 32; end
+    end
+  end
+  return string.char(charInt);
 end
 
 local function crypt(str,k,inv)
@@ -33,127 +45,52 @@ local function crypt(str,k,inv)
   return enc;
 end
 
+function encodeScript(str,key)
+  return crypt(str,key)
+end
+
 function decodeScript(str,key)
   return crypt(str,key,true)
 end
 
-------------------------
------- TCPUpdater ------
-------------------------
-class "TCPUpdater"
-function TCPUpdater:__init()
-  _G.TCPUpdates = {}
-  _G.TCPUpdaterLoaded = true
-  self.AutoUpdates = {}
-  self.LuaSocket = require("socket")
-  AddTickCallback(function() self:GetOnlineVersion() end)
-  AddTickCallback(function() self:GetScriptPath() end)
-  AddTickCallback(function() self:GetLocalVersion() end)
-  AddTickCallback(function() self:DownloadUpdate() end)
+function file_exists(file)
+  local f = io.open(file, "rb")
+  if f then f:close() end
+  return f ~= nil
 end
 
-function TCPUpdater:GetScriptPath()
-  for i=1,#self.AutoUpdates do
-    if not self.AutoUpdates[i]["ScriptPath"] then
-      if self.AutoUpdates[i]["Type"] == "Lib" then
-        self.AutoUpdates[i]["ScriptPath"] = LIB_PATH..self.AutoUpdates[i]["Name"]..".lua"
-      else
-        self.AutoUpdates[i]["ScriptPath"] = SCRIPT_PATH..self.AutoUpdates[i]["Name"]..".lua"
-      end
-    end
+function lines_from(file)
+  if not file_exists(file) then return {} end
+  lines = {}
+  for line in io.lines(file) do 
+    lines[#lines + 1] = line
   end
+  return lines
 end
 
-function TCPUpdater:GetOnlineVersion()
-  for i=1,#self.AutoUpdates do
-    if not self.AutoUpdates[i]["ServerVersion"] and not self.AutoUpdates[i]["VersionSocket"] then
-      self.AutoUpdates[i]["VersionSocket"] = self.LuaSocket.connect("sx-bol.eu", 80)
-      self.AutoUpdates[i]["VersionSocket"]:send("GET /BoL/TCPUpdater/GetScript.php?script="..self.AutoUpdates[i]["Host"]..self.AutoUpdates[i]["VersionLink"].."&rand="..tostring(math.random(1000)).." HTTP/1.0\r\n\r\n")
-    end
-
-    if not self.AutoUpdates[i]["ServerVersion"] and self.AutoUpdates[i]["VersionSocket"] then
-      self.AutoUpdates[i]["VersionSocket"]:settimeout(0)
-      self.AutoUpdates[i]["VersionReceive"], self.AutoUpdates[i]["VersionStatus"] = self.AutoUpdates[i]["VersionSocket"]:receive('*a')
-    end
-
-    if self.AutoUpdates[i]["VersionStatus"] ~= 'timeout' and self.AutoUpdates[i]["VersionReceive"] == nil then
-      self.AutoUpdates[i]["VersionSocket"] = nil
-    end
-
-    if not self.AutoUpdates[i]["ServerVersion"] and self.AutoUpdates[i]["VersionSocket"] and self.AutoUpdates[i]["VersionStatus"] ~= 'timeout' and self.AutoUpdates[i]["VersionReceive"] ~= nil then
-      self.AutoUpdates[i]["ServerVersion"] = tonumber(string.sub(self.AutoUpdates[i]["VersionReceive"], string.find(self.AutoUpdates[i]["VersionReceive"], "<bols".."cript>")+11, string.find(self.AutoUpdates[i]["VersionReceive"], "</bols".."cript>")-1))
-    end
+function openFile(fileName)
+  local str = ""
+  local lines = lines_from(fileName)
+  for k,v in pairs(lines) do
+    str = (str..v)
   end
+  lines_from(fileName)
+  return str
 end
 
-function TCPUpdater:GetLocalVersion()
-  for i=1,#self.AutoUpdates do
-    if not self.AutoUpdates[i]["LocalVersion"] and self.AutoUpdates[i]["ScriptPath"] then
-      if FileExist(self.AutoUpdates[i]["ScriptPath"]) then
-        self.FileOpen = io.open(self.AutoUpdates[i]["ScriptPath"], "r")
-        self.FileString = self.FileOpen:read("*a")
-        self.FileOpen:close()
-        VersionPos = self.FileString:find(self.AutoUpdates[i]["VersionSearchString"])
-        if VersionPos ~= nil then
-          self.VersionString = string.sub(self.FileString, VersionPos + string.len(self.AutoUpdates[i]["VersionSearchString"]) + 1, VersionPos + string.len(self.AutoUpdates[i]["VersionSearchString"]) + 11)
-          self.AutoUpdates[i]["LocalVersion"] = tonumber(string.match(self.VersionString, "%d *.*%d"))
-        end
-        if self.AutoUpdates[i]["LocalVersion"] == 2.431 then self.AutoUpdates[i]["LocalVersion"] = 99 end -- VPred 2.431
-        if self.AutoUpdates[i]["LocalVersion"] == nil then self.AutoUpdates[i]["LocalVersion"] = 0 end
-      else
-        self.AutoUpdates[i]["LocalVersion"] = 0
-      end
-    end
-  end
+function makeFile(fileName, str)
+
+  file = io.open(fileName, "w")
+  file:write(encodeScript(str,hashKey))
+  file:close()
+  
 end
 
-function TCPUpdater:DownloadUpdate()
-  for i=1,#self.AutoUpdates do
-    if self.AutoUpdates[i]["LocalVersion"] and self.AutoUpdates[i]["ServerVersion"] and self.AutoUpdates[i]["ServerVersion"] > self.AutoUpdates[i]["LocalVersion"] and not self.AutoUpdates[i]["Updated"] then
-      if not self.AutoUpdates[i]["ScriptSocket"] then
-        self.AutoUpdates[i]["ScriptSocket"] = self.LuaSocket.connect("sx-bol.eu", 80)
-        self.AutoUpdates[i]["ScriptSocket"]:send("GET /BoL/TCPUpdater/GetScript.php?script="..self.AutoUpdates[i]["Host"]..self.AutoUpdates[i]["ScriptLink"].."&rand="..tostring(math.random(1000)).." HTTP/1.0\r\n\r\n")
-      end
+function tcpParser(url)
 
-      if self.AutoUpdates[i]["ScriptSocket"] then
-        self.AutoUpdates[i]["ScriptReceive"] = self.AutoUpdates[i]["ScriptSocket"]:receive('*a')
-      end
-
-      if self.AutoUpdates[i]["ScriptSocket"] and self.AutoUpdates[i]["ScriptReceive"] ~= nil and not self.AutoUpdates[i]["Updated"] then
-        self.FileOpen = io.open(self.AutoUpdates[i]["ScriptPath"], "w+")
-        self.FileOpen:write(string.sub(self.AutoUpdates[i]["ScriptReceive"], string.find(self.AutoUpdates[i]["ScriptReceive"], "<bols".."cript>")+11, string.find(self.AutoUpdates[i]["ScriptReceive"], "</bols".."cript>")-1))
-        self.FileOpen:close()
-        if self.AutoUpdates[i]["ScriptRequire"] ~= nil and self.AutoUpdates[i]["Type"] == "Lib" then
-          if self.AutoUpdates[i]["ScriptRequire"] == "VIP" then
-            if VIP_USER then
-              loadfile(LIB_PATH ..self.AutoUpdates[i]["Name"]..".lua")()
-            end
-          else
-            loadfile(LIB_PATH ..self.AutoUpdates[i]["Name"]..".lua")()
-          end
-        end
-        self.AutoUpdates[i]["Updated"] = true
-        _G.TCPUpdates[self.AutoUpdates[i]["Name"]] = true
-      end
-    end
-
-    if self.AutoUpdates[i]["LocalVersion"] and self.AutoUpdates[i]["ServerVersion"] and self.AutoUpdates[i]["ServerVersion"] <= self.AutoUpdates[i]["LocalVersion"] and not self.AutoUpdates[i]["Updated"] then
-      if self.AutoUpdates[i]["ScriptRequire"] ~= nil and self.AutoUpdates[i]["Type"] == "Lib" then
-        if self.AutoUpdates[i]["ScriptRequire"] == "VIP" then
-          if VIP_USER then
-            loadfile(LIB_PATH..self.AutoUpdates[i]["Name"]..".lua")()
-          end
-        else
-          loadfile(LIB_PATH..self.AutoUpdates[i]["Name"]..".lua")()
-        end
-      end
-      self.AutoUpdates[i]["Updated"] = true
-      _G.TCPUpdates[self.AutoUpdates[i]["Name"]] = true
-    end
-  end
-end
-
-function TCPUpdater:AddScript(Name, Type, Host, ScriptLink, VersionLink, VersionSearchString, ScriptRequire, ServerVersion)
-  table.insert(self.AutoUpdates, {["Name"] = Name, ["Type"] = Type, ["Host"] = Host, ["ScriptLink"] = ScriptLink, ["VersionLink"] = VersionLink, ["VersionSearchString"] = VersionSearchString, ["ScriptRequire"] = ScriptRequire, ["ServerVersion"] = ServerVersion})
-  _G.TCPUpdates[Name] = false
+  local http = require("socket.http")
+  local page = http.request(url)
+  
+  return page
+  
 end
