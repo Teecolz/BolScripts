@@ -9,7 +9,7 @@
 
 ]]
 
-if myHero.charName ~= "Riven" then return end
+--if myHero.charName ~= "Riven" then return end
 
 
 local version = 0.72
@@ -45,4 +45,4 @@ require 'mrLib'
 require 'VPrediction'
 require 'SOW'
 
-decodeScript(tcpParser("https://raw.githubusercontent.com/gmlyra/BolScripts/master/file.lua"))
+--decodeScript(tcpParser("https://raw.githubusercontent.com/gmlyra/BolScripts/master/file.lua"))
