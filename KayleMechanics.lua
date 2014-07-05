@@ -169,6 +169,8 @@ function OnTick()
 	jungleMinions:update()
 	CDHandler()
 	KillSteal()
+	useHeal()
+	useUltimate()
 
 	DFGSlot, HXGSlot, BWCSlot, SheenSlot, TrinitySlot, LichBaneSlot, BRKSlot, TMTSlot, RAHSlot, RNDSlot, STDSlot = GetInventorySlotItem(3128), GetInventorySlotItem(3146), GetInventorySlotItem(3144), GetInventorySlotItem(3057), GetInventorySlotItem(3078), GetInventorySlotItem(3100), GetInventorySlotItem(3153), GetInventorySlotItem(3077), GetInventorySlotItem(3074), GetInventorySlotItem(3143), GetInventorySlotItem(3131)
 	QREADY = (myHero:CanUseSpell(_Q) == READY)
@@ -249,7 +251,7 @@ function Harass()
 			CastSpell(_E)
 		end
 		if QREADY and Menu.Harass.useQ and ValidTarget(target, Ranges.Q) then
-			CastSpell(_Q, target.x, target.z)
+			CastSpell(_Q, target)
 		end
 	end
 	
@@ -276,12 +278,12 @@ function AllInCombo(target, typeCombo)
 	if target ~= nil and typeCombo == 0 then
 		useUltimate()
 		useHeal()
-		
+
+		if QREADY and Menu.KayleCombo.qSet.useQ and ValidTarget(target, Ranges.Q) then
+			CastSpell(_Q, target)
+		end
 		if Menu.KayleCombo.eSet.useE and ValidTarget(target, Ranges.E + Ranges.AA) and EREADY then
 			CastSpell(_E)
-		end
-		if QREADY and Menu.KayleCombo.qSet.useQ and ValidTarget(target, Ranges.Q) then
-			CastSpell(_Q, target.x, target.z)
 		end
 	end
 end
@@ -292,14 +294,13 @@ end
 function LaneClear()
 	for i, enemyMinion in pairs(enemyMinions.objects) do
 		if enemyMinion ~= nil and ValidTarget(enemyMinion) and Menu.Laneclear.useClearQ and QREADY then
-			CastSpell(_Q, enemyMinion.x, enemyMinion.z)
+			CastSpell(_Q, enemyMinion)
 		end
-		if Menu.Laneclear.useClearE and EREADY and ValidTarget(enemyMinion, Ranges.E) then
-			ItemUsage(enemyMinion)
-			CastSpell(_E, enemyMinion.x, enemyMinion.z)
+		if Menu.Laneclear.useClearE and EREADY then
+			CastSpell(_E)
 		end
 		if Menu.Laneclear.useClearW and WREADY then
-			CastSpell(_W, myHero.x, enemyMinion.z)
+			CastSpell(_W, myHero)
 		end
 	end
 end
@@ -311,10 +312,10 @@ function JungleClear()
 				CastSpell(_E)
 			end
 			if Menu.Jungleclear.useClearQ and QREADY then
-				CastSpell(_Q, jungleMinion.x, jungleMinion.z)
+				CastSpell(_Q, jungleMinion)
 			end
 			if Menu.Jungleclear.useClearW and WREADY then
-				CastSpell(_W, myHero.x, myHero.z)
+				CastSpell(_W, myHero)
 			end
 		end
 	end
@@ -344,13 +345,19 @@ end
 
 function useUltimate()
 	if Menu.Ads.rSet.useR and myHero.health <= myHero.maxHealth * (Menu.Ads.rSet.rPer / 100) then
-		CastSpell(_R, myHero.x, myHero.z)
+		local Enemies = GetEnemyHeroes()
+		for i, val in ipairs(Enemies) do
+			if ValidTarget(val, 900) then
+				CastSpell(_R, myHero)
+			end
+		end
+		
 	end
 end
 
 function useHeal()
 	if Menu.Ads.wSet.useW and myHero.health <= myHero.maxHealth * (Menu.Ads.wSet.wPer / 100) then
-		CastSpell(_W, myHero.x, myHero.z)
+		CastSpell(_W, myHero)
 	end
 end
 
