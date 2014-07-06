@@ -8,14 +8,14 @@
 
 ]]
 
-if myHero.charName ~= "Kayle" then return end
+if myHero.charName ~= "Gragas" then return end
 
 
 local version = 0.1
 local AUTOUPDATE = true
 
 
-local SCRIPT_NAME = "KayleMechanics"
+local SCRIPT_NAME = "GragasMechanics"
 local SOURCELIB_URL = "https://raw.github.com/TheRealSource/public/master/common/SourceLib.lua"
 local SOURCELIB_PATH = LIB_PATH.."SourceLib.lua"
 if FileExist(SOURCELIB_PATH) then
@@ -50,8 +50,14 @@ local ignite, igniteReady = nil, nil
 local ts = nil
 local VP = nil
 local qOff, wOff, eOff, rOff = 0,0,0,0
-local abilitySequence = {3, 1, 1, 2, 1, 4, 1, 3, 1, 3, 4, 3, 3, 2, 2, 4, 2, 2}
-local Ranges = { Q = 650, W = 900, E = 400, R = 900 , AA = 125}
+local abilitySequence = {1, 2, 1, 3, 1, 4, 1, 2, 1, 2, 4, 2, 2, 3, 3, 4, 3, 3}
+local Ranges = { Q = 850, W = 0, E = 600, R = 1150 , AA = 125}
+local skills = {
+  skillQ = {spellName = "Barrel Roll", range = 850, speed = 2000, delay = .250, width = 160},
+  skillW = {spellName = "Drunken Rage", range = 0, speed = 1600, delay = .250, width = 80},
+  skillE = {spellName = "Body Slam", range = 600, speed = 1600, delay = .250, width = 80},
+  skillR = {spellName = "Explosive Cask", range = 1150, speed = 2000, delay = .250, width = 400},
+}
 local AnimationCancel =
 {
 	[1]=function() myHero:MoveTo(mousePos.x,mousePos.z) end, --"Move"
@@ -83,18 +89,21 @@ function initComponents()
 	-- Target Selector
 	ts = TargetSelector(TARGET_NEAR_MOUSE, 900)
 	
-	Menu = scriptConfig("Kayle Mechanics by Mr Articuno", "KayleMA")
+	Menu = scriptConfig("Gragas Mechanics by Mr Articuno", "GragasMA")
 	
 	Menu:addSubMenu("["..myHero.charName.." - Orbwalker]", "SOWorb")
 	Orbwalker:LoadToMenu(Menu.SOWorb)
 	
-	Menu:addSubMenu("["..myHero.charName.." - Combo]", "KayleCombo")
-	Menu.KayleCombo:addParam("combo", "Combo mode", SCRIPT_PARAM_ONKEYDOWN, false, 32)
-	-- Menu.KayleCombo:addParam("useF", "Use Flash in Combo ", SCRIPT_PARAM_ONOFF, false)
-	Menu.KayleCombo:addSubMenu("Q Settings", "qSet")
-	Menu.KayleCombo.qSet:addParam("useQ", "Use Q in combo", SCRIPT_PARAM_ONOFF, true)
-	Menu.KayleCombo:addSubMenu("E Settings", "eSet")
-	Menu.KayleCombo.eSet:addParam("useE", "Use E in combo", SCRIPT_PARAM_ONOFF, true)
+	Menu:addSubMenu("["..myHero.charName.." - Combo]", "GragasCombo")
+	Menu.GragasCombo:addParam("combo", "Combo mode", SCRIPT_PARAM_ONKEYDOWN, false, 32)
+	Menu.GragasCombo:addSubMenu("Q Settings", "qSet")
+	Menu.GragasCombo.qSet:addParam("useQ", "Use Q in combo", SCRIPT_PARAM_ONOFF, true)
+	Menu.GragasCombo:addSubMenu("W Settings", "wSet")
+	Menu.GragasCombo.wSet:addParam("useW", "Use W in combo", SCRIPT_PARAM_ONOFF, true)
+	Menu.GragasCombo:addSubMenu("E Settings", "eSet")
+	Menu.GragasCombo.eSet:addParam("useE", "Use E in combo", SCRIPT_PARAM_ONOFF, true)
+	Menu.GragasCombo:addSubMenu("R Settings", "rSet")
+	Menu.GragasCombo.rSet:addParam("useR", "Use Smart Ultimate", SCRIPT_PARAM_ONOFF, true)
 	
 	Menu:addSubMenu("["..myHero.charName.." - Harass]", "Harass")
 	Menu.Harass:addParam("harass", "Harass", SCRIPT_PARAM_ONKEYDOWN, false, string.byte("G"))
@@ -115,12 +124,6 @@ function initComponents()
 	Menu.Jungleclear:addParam("useClearE", "Use E in Jungleclear", SCRIPT_PARAM_ONOFF, true)
 	
 	Menu:addSubMenu("["..myHero.charName.." - Additionals]", "Ads")
-	Menu.Ads:addSubMenu("Ultimate Settings", "rSet")
-	Menu.Ads.rSet:addParam("useR", "Auto Use Ultimate", SCRIPT_PARAM_ONOFF, true)
-	Menu.Ads.rSet:addParam("rPer", "% of Life to Use R", SCRIPT_PARAM_SLICE, 40, 0, 100, 0)
-	Menu.Ads:addSubMenu("Heal Settings", "wSet")
-	Menu.Ads.wSet:addParam("useW", "Auto Use Heal", SCRIPT_PARAM_ONOFF, true)
-	Menu.Ads.wSet:addParam("wPer", "% of Life to Use W", SCRIPT_PARAM_SLICE, 60, 0, 100, 0)
 	Menu.Ads:addParam("cancel", "Animation Cancel", SCRIPT_PARAM_LIST, 1, { "Move","Laugh","Dance","Taunt","joke","Nothing" })
 	AddProcessSpellCallback(function(unit, spell)
 		if unit.isMe and (spell.name:find("Attack") ~= nil) then
@@ -131,7 +134,7 @@ function initComponents()
 	end)
 	Menu.Ads:addParam("autoLevel", "Auto-Level Spells", SCRIPT_PARAM_ONOFF, false)
 	Menu.Ads:addSubMenu("Killsteal", "KS")
-	Menu.Ads.KS:addParam("useQ", "Use Q", SCRIPT_PARAM_ONOFF, true)
+	Menu.Ads.KS:addParam("useR", "Use R", SCRIPT_PARAM_ONOFF, true)
 	Menu.Ads.KS:addParam("ignite", "Use Ignite", SCRIPT_PARAM_ONOFF, false)
 	Menu.Ads.KS:addParam("igniteRange", "Minimum range to cast Ignite", SCRIPT_PARAM_SLICE, 470, 0, 600, 0)
 	Menu.Ads:addSubMenu("VIP", "VIP")
@@ -156,10 +159,10 @@ function initComponents()
 	jungleMinions = minionManager(MINION_JUNGLE, 360, myHero, MINION_SORT_MAXHEALTH_DEC)
 	
 	if Menu.Ads.VIP.skin and VIP_USER then
-		GenModelPacket("Kayle", Menu.Ads.VIP.skin1)
+		GenModelPacket("Gragas", Menu.Ads.VIP.skin1)
 	end
 	
-	PrintChat("<font color = \"#33CCCC\">Kayle Mechanics by</font> <font color = \"#fff8e7\">Mr Articuno</font>")
+	PrintChat("<font color = \"#33CCCC\">Gragas Mechanics by</font> <font color = \"#fff8e7\">Mr Articuno</font>")
 end
 
 function OnTick()
@@ -169,8 +172,6 @@ function OnTick()
 	jungleMinions:update()
 	CDHandler()
 	KillSteal()
-	useHeal()
-	useUltimate()
 
 	DFGSlot, HXGSlot, BWCSlot, SheenSlot, TrinitySlot, LichBaneSlot, BRKSlot, TMTSlot, RAHSlot, RNDSlot, STDSlot = GetInventorySlotItem(3128), GetInventorySlotItem(3146), GetInventorySlotItem(3144), GetInventorySlotItem(3057), GetInventorySlotItem(3078), GetInventorySlotItem(3100), GetInventorySlotItem(3153), GetInventorySlotItem(3077), GetInventorySlotItem(3074), GetInventorySlotItem(3143), GetInventorySlotItem(3131)
 	QREADY = (myHero:CanUseSpell(_Q) == READY)
@@ -190,13 +191,12 @@ function OnTick()
 	if swing and os.clock() > lastBasicAttack + 0.625 then
 		--swing = false
 	end
-		
-	
+
 	if Menu.Ads.autoLevel then
 		AutoLevel()
 	end
 	
-	if Menu.KayleCombo.combo then
+	if Menu.GragasCombo.combo then
 		Combo()
 	end
 	
@@ -247,8 +247,11 @@ function Harass()
 	local enemy = ts.target
 	
 	if enemy ~= nil and ValidTarget(enemy) then
+		if Menu.Harass.useW and ValidTarget(target, Ranges.E + Ranges.AA) and WREADY then
+			CastSpell(_W)
+		end
 		if Menu.Harass.useE and ValidTarget(target, Ranges.E + Ranges.AA) and EREADY then
-			CastSpell(_E)
+			CastSpell(_E, target)
 		end
 		if QREADY and Menu.Harass.useQ and ValidTarget(target, Ranges.Q) then
 			CastSpell(_Q, target)
@@ -276,14 +279,25 @@ end
 
 function AllInCombo(target, typeCombo)
 	if target ~= nil and typeCombo == 0 then
-		useUltimate()
-		useHeal()
-
-		if QREADY and Menu.KayleCombo.qSet.useQ and ValidTarget(target, Ranges.Q) then
-			CastSpell(_Q, target)
+		if RREADY and Menu.GragasCombo.rSet.useR and ValidTarget(target, Ranges.R - 100) then
+			smartUltimate(target)
 		end
-		if Menu.KayleCombo.eSet.useE and ValidTarget(target, Ranges.E + Ranges.AA) and EREADY then
-			CastSpell(_E)
+		if WREADY and Menu.GragasCombo.wSet.useW and ValidTarget(target, Ranges.E + Ranges.AA) then
+			CastSpell(_W)
+		end
+		if QREADY and Menu.GragasCombo.qSet.useQ and ValidTarget(target, Ranges.Q) then
+			local qPosition, qChance = VP:GetLineCastPosition(target, skills.skillQ.delay, skills.skillQ.width, skills.skillQ.range, skills.skillQ.speed, myHero, false)
+
+		    if qPosition ~= nil and GetDistance(qPosition) < skills.skillQ.range and qChance >= 2 then
+		      CastSpell(_Q, qPosition.x, qPosition.z)
+		    end
+		end
+		if Menu.GragasCombo.eSet.useE and ValidTarget(target, Ranges.E) and EREADY then
+			local ePosition, eChance = VP:GetLineCastPosition(target, skills.skillQ.delay, skills.skillQ.width, skills.skillQ.range, skills.skillQ.speed, myHero, true)
+
+		    if ePosition ~= nil and GetDistance(ePosition) < skills.skillE.range and eChance >= 2 then
+		      CastSpell(_E, ePosition.x, ePosition.z)
+		    end
 		end
 	end
 end
@@ -293,14 +307,14 @@ end
 
 function LaneClear()
 	for i, enemyMinion in pairs(enemyMinions.objects) do
-		if enemyMinion ~= nil and ValidTarget(enemyMinion) and Menu.Laneclear.useClearQ and QREADY then
+		if Menu.Laneclear.useClearW and WREADY then
+			CastSpell(_W)
+		end
+		if enemyMinion ~= nil and ValidTarget(enemyMinion, Ranges.Q) and Menu.Laneclear.useClearQ and QREADY then
 			CastSpell(_Q, enemyMinion)
 		end
 		if Menu.Laneclear.useClearE and EREADY then
-			CastSpell(_E)
-		end
-		if Menu.Laneclear.useClearW and WREADY then
-			CastSpell(_W, myHero)
+			CastSpell(_E, enemyMinion)
 		end
 	end
 end
@@ -308,14 +322,14 @@ end
 function JungleClear()
 	for i, jungleMinion in pairs(jungleMinions.objects) do
 		if jungleMinion ~= nil then
+			if Menu.Jungleclear.useClearW and WREADY then
+				CastSpell(_W)
+			end
 			if Menu.Jungleclear.useClearE and EREADY then
-				CastSpell(_E)
+				CastSpell(_E, jungleMinion)
 			end
 			if Menu.Jungleclear.useClearQ and QREADY then
 				CastSpell(_Q, jungleMinion)
-			end
-			if Menu.Jungleclear.useClearW and WREADY then
-				CastSpell(_W, myHero)
 			end
 		end
 	end
@@ -336,6 +350,9 @@ function AutoLevel()
 end
 
 function KillSteal()
+	if Menu.Ads.KS.useR then
+		KSR()
+	end
 	if Menu.Ads.KS.ignite then
 		IgniteKS()
 	end
@@ -343,21 +360,13 @@ end
 
 -- Use Ultimate --
 
-function useUltimate()
-	if Menu.Ads.rSet.useR and myHero.health <= myHero.maxHealth * (Menu.Ads.rSet.rPer / 100) then
-		local Enemies = GetEnemyHeroes()
-		for i, val in ipairs(Enemies) do
-			if ValidTarget(val, 900) then
-				CastSpell(_R, myHero)
-			end
-		end
-		
-	end
-end
+function KSR()
+	for i, enemy in ipairs(GetEnemyHeroes()) do
+		rDmg = getDmg("R", enemy, myHero)
 
-function useHeal()
-	if Menu.Ads.wSet.useW and myHero.health <= myHero.maxHealth * (Menu.Ads.wSet.wPer / 100) then
-		CastSpell(_W, myHero)
+		if RREADY and enemy ~= nil and ValidTarget(enemy, Ranges.R) and enemy.health < rDmg and not enemy.bInvulnerable then
+			CastSpell(_R, enemy)
+		end
 	end
 end
 
@@ -370,7 +379,7 @@ function IgniteKS()
 		local Enemies = GetEnemyHeroes()
 		for i, val in ipairs(Enemies) do
 			if ValidTarget(val, 600) then
-				if getDmg("IGNITE", val, myHero) > val.health and RReady ~= true and GetDistance(val) >= Menu.Ads.KS.igniteRange then
+				if getDmg("IGNITE", val, myHero) > val.health and RReady ~= true and GetDistance(val) >= Menu.Ads.KS.igniteRange and not val.bInvulnerable then
 					CastSpell(ignite, val)
 				end
 			end
@@ -391,6 +400,28 @@ end
 function animationCancel(unit, spell)
 	if not unit.isMe then return end
 
+end
+
+function smartUltimate(target)
+	if GetDistance(target) <= Ranges.R - 100 then
+		local x = target.x
+		local z = target.z
+
+		if x < myHero.x then
+			x = x - 100
+		elseif x > myHero.x then
+			x = x + 100
+		end
+
+		if z < myHero.z then
+			z = z - 100
+		elseif z > myHero.z then
+			z = z + 100
+		end
+
+		CastSpell(_R, x, z)
+
+	end
 end
 
 function ItemUsage(target)
