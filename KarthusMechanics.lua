@@ -173,8 +173,6 @@ function OnTick()
 	jungleMinions:update()
 	CDHandler()
 	KillSteal()
-	useHeal()
-	useUltimate()
 
 	DFGSlot, HXGSlot, BWCSlot, SheenSlot, TrinitySlot, LichBaneSlot, BRKSlot, TMTSlot, RAHSlot, RNDSlot, STDSlot = GetInventorySlotItem(3128), GetInventorySlotItem(3146), GetInventorySlotItem(3144), GetInventorySlotItem(3057), GetInventorySlotItem(3078), GetInventorySlotItem(3100), GetInventorySlotItem(3153), GetInventorySlotItem(3077), GetInventorySlotItem(3074), GetInventorySlotItem(3143), GetInventorySlotItem(3131)
 	QREADY = (myHero:CanUseSpell(_Q) == READY)
