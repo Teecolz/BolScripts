@@ -11,7 +11,7 @@
 if myHero.charName ~= "Karthus" then return end
 
 
-local version = 0.1
+local version = 0.2
 local AUTOUPDATE = true
 
 
@@ -129,11 +129,14 @@ function initComponents()
 	Menu.Ads.rSet:addParam("nEnemy", "Quantity of Enemies Killable", SCRIPT_PARAM_SLICE, 1, 0, 5, 0)
 	Menu.Ads:addParam("cancel", "Animation Cancel", SCRIPT_PARAM_LIST, 1, { "Move","Laugh","Dance","Taunt","joke","Nothing" })
 	AddProcessSpellCallback(function(unit, spell)
-		if unit.isMe and (spell.name:find("Attack") ~= nil) then
-            --swing = true
+		if unit.isMe then
+			if spell.name == 'KarthusDefile' then
+	            eActive = not eActive
+	        elseif spell.name == 'KarthusDefileSoundDummy2' then
+	        	eActive = true
+            end
             lastBasicAttack = os.clock()
         end
-		animationCancel(unit, spell)
 	end)
 	Menu.Ads:addParam("autoLevel", "Auto-Level Spells", SCRIPT_PARAM_ONOFF, false)
 	Menu.Ads:addSubMenu("Killsteal", "KS")
@@ -204,11 +207,6 @@ function OnTick()
 		LaneClear()
 	elseif Menu.Jungleclear.jclr then
 		JungleClear()
-	else
-		if eActive then
-			CastSpell(_E)
-			eActive = false
-		end
 	end
 
 end
@@ -243,23 +241,22 @@ end
 -- Harass --
 
 function Harass()
-	local enemy = ts.target
+	local target = ts.target
 	
-	if enemy ~= nil and ValidTarget(enemy) then
-		if Menu.Harass.useE and ValidTarget(enemy, skills.skillE.range) and EREADY and not eActive then
+	if target ~= nil and ValidTarget(target) then
+		if Menu.Harass.useE and ValidTarget(target, skills.skillE.range) and EREADY and not eActive then
 			CastSpell(_E)
-			eActive = true
 		end
-		if WREADY and Menu.Harass.useW and ValidTarget(enemy, skills.skillW.range) then
-			local wPosition, wChance = VP:GetLineCastPosition(enemy, skills.skillW.delay, skills.skillW.width, skills.skillW.range, skills.skillW.speed, myHero, false)
+		if WREADY and Menu.Harass.useW and ValidTarget(target, skills.skillW.range) then
+			local wPosition, wChance = VP:GetLineCastPosition(target, skills.skillW.delay, skills.skillW.width, skills.skillW.range, skills.skillW.speed, myHero, false)
 
 		    if wPosition ~= nil and wChance >= 2 then
 		      CastSpell(_W, wPosition.x, wPosition.z)
 		    end
 		end
 
-		if QREADY and Menu.Harass.useQ and ValidTarget(enemy, skills.skillQ.range) then
-			local qPosition, qChance = VP:GetLineCastPosition(enemy, skills.skillQ.delay, skills.skillQ.width, skills.skillQ.range, skills.skillQ.speed, myHero, false)
+		if QREADY and Menu.Harass.useQ and ValidTarget(target, skills.skillQ.range) then
+			local qPosition, qChance = VP:GetCircularCastPosition(target, skills.skillQ.delay, skills.skillQ.width, skills.skillQ.range, skills.skillQ.speed, myHero, false)
 
 		    if qPosition ~= nil and qChance >= 2 then
 		      CastSpell(_Q, qPosition.x, qPosition.z)
@@ -288,21 +285,17 @@ end
 
 function AllInCombo(target, typeCombo)
 	if target ~= nil and typeCombo == 0 then
-		if Menu.KarthusCombo.eSet.useE and ValidTarget(enemy, skills.skillE.range) and EREADY and not eActive then
+		if Menu.KarthusCombo.eSet.useE and ValidTarget(target, skills.skillE.range) and EREADY and not eActive then
 			CastSpell(_E)
-			eActive = true
 		end
-		if WREADY and Menu.KarthusCombo.wSet.useW and ValidTarget(enemy, skills.skillW.range) then
-			local wPosition, wChance = VP:GetLineCastPosition(enemy, skills.skillW.delay, skills.skillW.width, skills.skillW.range, skills.skillW.speed, myHero, false)
-
+		if WREADY and Menu.KarthusCombo.wSet.useW and ValidTarget(target, skills.skillW.range) then
+			local wPosition, wChance = VP:GetLineCastPosition(target, skills.skillW.delay, skills.skillW.width, skills.skillW.range, skills.skillW.speed, myHero, false)
 		    if wPosition ~= nil and wChance >= 2 then
 		      CastSpell(_W, wPosition.x, wPosition.z)
 		    end
 		end
-
-		if QREADY and Menu.KarthusCombo.qSet.useQ and ValidTarget(enemy, skills.skillQ.range) then
-			local qPosition, qChance = VP:GetLineCastPosition(enemy, skills.skillQ.delay, skills.skillQ.width, skills.skillQ.range, skills.skillQ.speed, myHero, false)
-
+		if QREADY and Menu.KarthusCombo.qSet.useQ and ValidTarget(target, skills.skillQ.range) then
+			local qPosition, qChance = VP:GetCircularCastPosition(target, skills.skillQ.delay, skills.skillQ.width, skills.skillQ.range, skills.skillQ.speed, myHero, false)
 		    if qPosition ~= nil and qChance >= 2 then
 		      CastSpell(_Q, qPosition.x, qPosition.z)
 		    end
@@ -315,12 +308,16 @@ end
 
 function LaneClear()
 	for i, enemyMinion in pairs(enemyMinions.objects) do
-		if enemyMinion ~= nil and ValidTarget(enemyMinion) and Menu.Laneclear.useClearQ and QREADY then
-			CastSpell(_Q, enemyMinion)
-		end
-		if Menu.Laneclear.useClearE and EREADY and not eActive then
+		if Menu.Laneclear.useClearE and ValidTarget(enemyMinion, skills.skillE.range) and EREADY and not eActive then
 			CastSpell(_E)
-			eActive = true
+		end
+
+		if QREADY and Menu.Laneclear.useClearQ and ValidTarget(enemyMinion, skills.skillQ.range) then
+			local qPosition, qChance = VP:GetCircularCastPosition(enemyMinion, skills.skillQ.delay, skills.skillQ.width, skills.skillQ.range, skills.skillQ.speed, myHero, false)
+
+		    if qPosition ~= nil and qChance >= 2 then
+		      CastSpell(_Q, qPosition.x, qPosition.z)
+		    end
 		end
 	end
 end
@@ -328,12 +325,16 @@ end
 function JungleClear()
 	for i, jungleMinion in pairs(jungleMinions.objects) do
 		if jungleMinion ~= nil then
-			if Menu.Jungleclear.useClearE and EREADY and not eActive then
+			if Menu.JungleClear.useClearE and ValidTarget(jungleMinion, skills.skillE.range) and EREADY and not eActive then
 				CastSpell(_E)
-				eActive = true
 			end
-			if Menu.Jungleclear.useClearQ and QREADY then
-				CastSpell(_Q, jungleMinion)
+			
+			if QREADY and Menu.JungleClear.useClearQ and ValidTarget(jungleMinion, skills.skillQ.range) then
+				local qPosition, qChance = VP:GetCircularCastPosition(jungleMinion, skills.skillQ.delay, skills.skillQ.width, skills.skillQ.range, skills.skillQ.speed, myHero, false)
+
+			    if qPosition ~= nil and qChance >= 2 then
+			      CastSpell(_Q, qPosition.x, qPosition.z)
+			    end
 			end
 		end
 	end
@@ -374,7 +375,8 @@ function KSR()
 		end
 	end
 
-	if Menu.Ads.rSet.nEnemy <= numberKillable and Menu.Ads.rSet.useR then
+	if numberKillable >= Menu.Ads.rSet.nEnemy and Menu.Ads.rSet.useR then
+		print('ULTA CARALHO')
 		CastSpell(_R)
 	end
 end
@@ -421,18 +423,6 @@ function ItemUsage(target)
 	if RAHREADY and GetDistance(target) < 275 then CastSpell(RAHSlot) end
 	if RNDREADY and GetDistance(target) < 275 then CastSpell(RNDSlot) end
 
-end
-
-
-function spellByPacket(spell, target)
-	if not VIP_USER then return end
-
-	local offset = spell.windUpTime - GetLatency / 2000
-
-	DelayAction(function()
-		Packet('S_CAST', {spellId = spell, targetNetworkId = target.networkID, fromX = target.x, toX = target.x, fromY = target.z, toY = target.z})
-	end, offset)
-	
 end
 
 -- Change skin function, made by Shalzuth
