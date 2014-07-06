@@ -54,7 +54,7 @@ local qOff, wOff, eOff, rOff = 0,0,0,0
 local abilitySequence = {3, 1, 1, 2, 1, 4, 1, 3, 1, 3, 4, 3, 3, 2, 2, 4, 2, 2}
 local Ranges = { Q = 875, W = 1000, E = 425, R = 900000 , AA = 450}
 local skills = {
-  skillQ = {spellName = "Lay Waste", range = 875, speed = 2000, delay = .250, width = 200},
+  skillQ = {spellName = "Lay Waste", range = 975, speed = 2000, delay = .250, width = 200},
   skillW = {spellName = "Wall of Pain", range = 1000, speed = 1600, delay = .250, width = 80},
   skillE = {spellName = "Defile", range = 425, speed = 1600, delay = .250, width = 425},
   skillR = {spellName = "Requiem", range = 900000, speed = 200, delay = .250, width = 400},
@@ -285,6 +285,7 @@ end
 
 function AllInCombo(target, typeCombo)
 	if target ~= nil and typeCombo == 0 then
+		KSR()
 		if Menu.KarthusCombo.eSet.useE and ValidTarget(target, skills.skillE.range) and EREADY and not eActive then
 			CastSpell(_E)
 		end
@@ -355,7 +356,7 @@ function AutoLevel()
 end
 
 function KillSteal()
-	if Menu.Ads.KS.useR then
+	if Menu.Ads.rSet.useR then
 		KSR()
 	end
 	if Menu.Ads.KS.ignite then
@@ -376,7 +377,6 @@ function KSR()
 	end
 
 	if numberKillable >= Menu.Ads.rSet.nEnemy and Menu.Ads.rSet.useR then
-		print('ULTA CARALHO')
 		CastSpell(_R)
 	end
 end
