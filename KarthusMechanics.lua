@@ -80,7 +80,7 @@ local swing = false
 
 function OnLoad()
 	initComponents()
-endd
+end
 
 function initComponents()
 	-- VPrediction Start
