@@ -11,7 +11,7 @@
 if myHero.charName ~= "Kayle" then return end
 
 
-local version = 0.1
+local version = 0.2
 local AUTOUPDATE = true
 
 
@@ -419,7 +419,7 @@ end
 
 -- Change skin function, made by Shalzuth
 function GenModelPacket(champ, skinId)
-	p = CLoLPacket(0x96)
+	p = CLoLPacket(0x97)
 	p:EncodeF(myHero.networkID)
 	p.pos = 1
 	t1 = p:Decode1()

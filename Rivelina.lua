@@ -12,7 +12,7 @@
 if myHero.charName ~= "Riven" then return end
 
 
-local version = 0.74
+local version = 0.76
 local AUTOUPDATE = true
 
 
@@ -72,8 +72,31 @@ local lastBasicAttack = 0
 local swingDelay = 0.25
 local swing = false
 
+--[[Global Vars]]--
+	ToInterrupt = {}
+	InteruptionSpells = {
+		{ charName = "FiddleSticks",	spellName = "Crowstorm"},
+		{ charName = "MissFortune",		spellName = "MissFortuneBulletTime"},
+		{ charName = "Nunu",			spellName = "AbsoluteZero"},
+		{ charName = "Caitlyn",			spellName = "CaitlynAceintheHole"},
+		{ charName = "Katarina", 		spellName = "KatarinaR"},
+		{ charName = "Karthus", 		spellName = "FallenOne"},
+		{ charName = "Malzahar",        spellName = "AlZaharNetherGrasp"},
+		{ charName = "Galio",           spellName = "GalioIdolOfDurand"},
+		{ charName = "Darius",          spellName = "DariusExecute"},
+		{ charName = "MonkeyKing",      spellName = "MonkeyKingSpinToWin"},
+		{ charName = "Vi",    			spellName = "ViR"},
+		{ charName = "Shen",			spellName = "ShenStandUnited"},
+		{ charName = "Urgot",			spellName = "UrgotSwap2"},
+		{ charName = "Pantheon",		spellName = "Pantheon_GrandSkyfall_Jump"},
+		{ charName = "Lucian",			spellName = "LucianR"},
+		{ charName = "Braum",			spellName = "BraumR"},
+	}
+	--[[/Global Vars]]--
+
 function OnLoad()
 	initComponents()
+	AddInteruptMenu()
 end
 
 function initComponents()
@@ -92,8 +115,6 @@ function initComponents()
 	Menu:addSubMenu("["..myHero.charName.." - Combo]", "RivenCombo")
 	Menu.RivenCombo:addParam("combo", "Combo mode", SCRIPT_PARAM_ONKEYDOWN, false, 32)
 	-- Menu.RivenCombo:addParam("useF", "Use Flash in Combo ", SCRIPT_PARAM_ONOFF, false)
-	Menu.RivenCombo:addSubMenu("Q Settings", "qSet")
-	Menu.RivenCombo.qSet:addParam("useQ", "Use Q in combo", SCRIPT_PARAM_ONOFF, true)
 	Menu.RivenCombo:addSubMenu("W Settings", "wSet")
 	Menu.RivenCombo.wSet:addParam("useW", "Use W in combo", SCRIPT_PARAM_ONOFF, true)
 	Menu.RivenCombo:addSubMenu("E Settings", "eSet")
@@ -105,30 +126,23 @@ function initComponents()
 	
 	Menu:addSubMenu("["..myHero.charName.." - Harass]", "Harass")
 	Menu.Harass:addParam("harass", "Harass", SCRIPT_PARAM_ONKEYDOWN, false, string.byte("G"))
-	Menu.Harass:addParam("useQ", "Use Q in Harass", SCRIPT_PARAM_ONOFF, true)
 	Menu.Harass:addParam("useW", "Use W in Harass", SCRIPT_PARAM_ONOFF, true)
 	Menu.Harass:addParam("useE", "Use E in Harass", SCRIPT_PARAM_ONOFF, true)
 	
 	Menu:addSubMenu("["..myHero.charName.." - Laneclear]", "Laneclear")
 	Menu.Laneclear:addParam("lclr", "Laneclear Key", SCRIPT_PARAM_ONKEYDOWN, false, string.byte("V"))
-	Menu.Laneclear:addParam("useClearQ", "Use Q in Laneclear", SCRIPT_PARAM_ONOFF, true)
 	Menu.Laneclear:addParam("useClearW", "Use W in Laneclear", SCRIPT_PARAM_ONOFF, true)
 	Menu.Laneclear:addParam("useClearE", "Use E in Laneclear", SCRIPT_PARAM_ONOFF, true)
 	
 	Menu:addSubMenu("["..myHero.charName.." - Jungleclear]", "Jungleclear")
 	Menu.Jungleclear:addParam("jclr", "Jungleclear Key", SCRIPT_PARAM_ONKEYDOWN, false, string.byte("V"))
-	Menu.Jungleclear:addParam("useClearQ", "Use Q in Jungleclear", SCRIPT_PARAM_ONOFF, true)
 	Menu.Jungleclear:addParam("useClearW", "Use W in Jungleclear", SCRIPT_PARAM_ONOFF, true)
 	Menu.Jungleclear:addParam("useClearE", "Use E in Jungleclear", SCRIPT_PARAM_ONOFF, true)
 	
 	Menu:addSubMenu("["..myHero.charName.." - Additionals]", "Ads")
 	Menu.Ads:addParam("cancel", "Animation Cancel", SCRIPT_PARAM_LIST, 1, { "Move","Laugh","Dance","Taunt","joke","Nothing" })
 	AddProcessSpellCallback(function(unit, spell)
-		if unit.isMe and (spell.name:find("Attack") ~= nil) then
-            swing = true
-            lastBasicAttack = os.clock()
-        end
-		animationCancel(unit, spell)
+		animationCancel(unit,spell)
 	end)
 	Menu.Ads:addParam("autoLevel", "Auto-Level Spells", SCRIPT_PARAM_ONOFF, false)
 	Menu.Ads:addSubMenu("Escape", "escapeMenu")
@@ -143,7 +157,7 @@ function initComponents()
 	Menu.Ads:addSubMenu("VIP", "VIP")
 	Menu.Ads.VIP:addParam("spellCast", "Spell by Packet", SCRIPT_PARAM_ONOFF, true)
 	Menu.Ads.VIP:addParam("skin", "Use custom skin (Requires Reload)", SCRIPT_PARAM_ONOFF, false)
-	Menu.Ads.VIP:addParam("skin1", "Skin changer", SCRIPT_PARAM_SLICE, 1, 1, 7)
+	Menu.Ads.VIP:addParam("skin1", "Skin changer", SCRIPT_PARAM_SLICE, 1, 1, 5)
 	
 	Menu:addSubMenu("["..myHero.charName.." - Target Selector]", "targetSelector")
 	Menu.targetSelector:addTS(ts)
@@ -191,10 +205,6 @@ function OnTick()
 	STDREADY = (STDSlot ~= nil and myHero:CanUseSpell(STDSlot) == READY)
 	IREADY = (ignite ~= nil and myHero:CanUseSpell(ignite) == READY)
 
-	if swing and os.clock() > lastBasicAttack + 0.625 then
-		swing = false
-	end
-		
 	
 	if Menu.Ads.autoLevel then
 		AutoLevel()
@@ -262,9 +272,6 @@ function Harass()
 			CastSpell(_W)
 			ItemUsage(enemy)
 		end
-		if Menu.Harass.useQ and ValidTarget(enemy, Ranges.Q) and QREADY then
-			castQ(enemy)
-		end
 	end
 	
 end
@@ -296,12 +303,15 @@ function AllInCombo(target, typeCombo)
         		ItemUsage(target)
         	end
 		end
+
+		if not Menu.Ads.hitOnly and GetDistance(target) >= Ranges.Q then
+			CastSpell(_Q, target.x, target.z)
+		end
 		
 		-- E+W(+Q) Range Combo --
 		-- Initiate part
 		if ValidTarget(target, 900) and Menu.RivenCombo.eSet.useE and EREADY and WREADY then
 			CastSpell(_E, target.x, target.z)
-			DelayAction(function() end, 1500 - GetLatency())
       		if ValidTarget(target, Ranges.W) then
         		ItemUsage(target)
         	end
@@ -310,11 +320,9 @@ function AllInCombo(target, typeCombo)
 		if RREADY and myHero:GetSpellData(_R).name == 'RivenFengShuiEngine' and ValidTarget(target, 360) then
 			if Menu.RivenCombo.rSet.useR == 1 then
 				CastSpell(_R)
-				DelayAction(function() end, 800 - GetLatency())
 			end
 			if Menu.RivenCombo.rSet.useR == 2 then
 				CastSpell(_R)
-				DelayAction(function() end, 800 - GetLatency())
 			end
 		end
 		-- W casting part with range checks
@@ -323,8 +331,6 @@ function AllInCombo(target, typeCombo)
       		if ValidTarget(target, Ranges.W) then
         		ItemUsage(target)
         	end
-		elseif ValidTarget(target, Ranges.Q + Ranges.W) and WREADY and QREADY and Menu.RivenCombo.qSet.useQ then
-			castQ(target)
 		elseif ValidTarget(target, Ranges.E + Ranges.W) and EREADY and Menu.RivenCombo.eSet.useE then
 			CastSpell(_E, target.x, target.z)
       		if ValidTarget(target, Ranges.W) then
@@ -345,31 +351,9 @@ function AllInCombo(target, typeCombo)
 					end
 				end
 			end
-			DelayAction(function() end, 1000 - GetLatency())
 		end
-		if ValidTarget(target, Ranges.Q) and QREADY and Menu.RivenCombo.qSet.useQ then
-			castQ(target)
-		end
-		
+
 		-- E+W+Q Range Combo --
-		
-		-- E+Q+Q+W Range Combo --
-		if ValidTarget(target, 700) and GetDistance(target) > 500 then
-			if Menu.RivenCombo.qSet.useQ and QREADY then
-				castQ(target)
-			end
-		end
-		
-		-- E+Q+Q+W Range Combo --
-		
-		
-		-- E+Q+Q+Q+W Range Combo --
-        
-		if ValidTarget(target, 900) and GetDistance(target) > 700 then
-			if Menu.RivenCombo.qSet.useQ and QREADY then
-				castQ(target)
-			end
-		end
 		
 		-- E+Q+Q+Q+W Range Combo --
 	end
@@ -377,47 +361,8 @@ end
 
 -- All In Combo --
 
--- Combo Smart --
-
-function SmartCombo(target)
-	if target ~= nil and ValidTarget(target) then
-		if RREADY and Menu.RivenCombo.rSet.useR and ValidTarget(target, Ranges.R) then
-			rDmg = getDmg("R", target, myHero)
-			
-			if RREADY and target ~= nil and ValidTarget(target, Menu.RivenCombo.rSet.rRange) and target.health <= rDmg then
-				if myHero:GetSpellData(_R).name == 'RivenFengShuiEngine' then
-					CastSpell(_R)
-				end
-				if myHero:GetSpellData(_R).name == 'rivenizunablade' then
-					CastSpell(_R, target.x, target.z)
-				end
-			end
-		end
-		
-		if Menu.RivenCombo.wSet.useW and ValidTarget(target, Ranges.W) and WREADY then
-			CastSpell(_W)
-		end
-		if EREADY and Menu.RivenCombo.eSet.useE and ValidTarget(target, Ranges.E) then
-			CastSpell(_E, target.x, target.z)
-		end
-	end
-end
-
--- End Combo Smart --
-
 function LaneClear()
 	for i, enemyMinion in pairs(enemyMinions.objects) do
-		if enemyMinion ~= nil and ValidTarget(enemyMinion) and Menu.Laneclear.useClearQ and QREADY then
-			if Menu.Ads.hitOnly then
-				if ValidTarget(enemyMinion, Ranges.Q) then
-					castQ(enemyMinion)
-				end
-			else
-				if ValidTarget(enemyMinion, Ranges.Q) then
-					castQ(enemyMinion)
-				end
-			end
-		end
 		if Menu.Laneclear.useClearE and EREADY and ValidTarget(enemyMinion, Ranges.E) then
 			ItemUsage(enemyMinion)
 			CastSpell(_E, enemyMinion.x, enemyMinion.z)
@@ -434,15 +379,6 @@ function JungleClear()
 		if jungleMinion ~= nil then
 			if Menu.Jungleclear.useClearE and EREADY then
 				CastSpell(_E, jungleMinion.x, jungleMinion.z)
-			end
-			if Menu.Jungleclear.useClearQ and QREADY then
-				if Menu.Ads.hitOnly then
-					if ValidTarget(jungleMinion, Ranges.Q) then
-						castQ(jungleMinion)
-					end
-				else
-					castQ(jungleMinion)
-				end
 			end
 			if Menu.Jungleclear.useClearW and WREADY and ValidTarget(jungleMinion, Ranges.W) then
 				ItemUsage(jungleMinion)
@@ -544,7 +480,6 @@ function animationCancel(unit, spell)
 	if spell.name == 'RivenTriCleave' then -- _Q
 		DelayAction(function() Orbwalker:resetAA() end, 0.25)
 		AnimationCancel[Menu.Ads.cancel]()
-		swing = false
 	else
 		if spell.name == 'RivenMartyr' then -- _W
 			AnimationCancel[Menu.Ads.cancel]()
@@ -564,76 +499,97 @@ function animationCancel(unit, spell)
 	end
 end
 
-function castQ(Target)
-
-	if Target ~= nil and ValidTarget(Target) then
-		if QREADY then
-			if Menu.Laneclear.lclr or Menu.Jungleclear.jclr or Menu.RivenCombo.combo or Menu.Harass.harass then
-				if Menu.Ads.weaving then
-					if not swing then
-						if Menu.Ads.hitOnly then
-							if QREADY and ValidTarget(Target, Ranges.Q) then
-								if Menu.Ads.VIP.spellCast and VIP_USER then
-									CastSpell(_Q, Target.x, Target.z)
-								else
-									CastSpell(_Q, Target.x, Target.z)
-								end
-								swing = false
-							end
-						else
-							if QREADY and ValidTarget(Target) then
-								if Menu.Ads.VIP.spellCast and VIP_USER then
-									CastSpell(_Q, Target.x, Target.z)
-								else
-									CastSpell(_Q, Target.x, Target.z)
-								end
-								swing = false
-							end
-						end
-	                elseif swing  then
-	        		end
-	        	else
-	        		if Menu.Ads.hitOnly then
-						if QREADY and ValidTarget(Target, Ranges.Q) then
-							if Menu.Ads.VIP.spellCast and VIP_USER then
-								CastSpell(_Q, Target.x, Target.z)
-							else
-								CastSpell(_Q, Target.x, Target.z)
-							end
-							swing = false
-						end
-					else
-						if QREADY and ValidTarget(Target) then
-							if Menu.Ads.VIP.spellCast and VIP_USER then
-								CastSpell(_Q, Target.x, Target.z)
-							else
-								CastSpell(_Q, Target.x, Target.z)
-							end
-							swing = false
-						end
-					end
-	        	end
-			end
-		end
-	end
-
-end
-
 function ItemUsage(target)
 
 	if DFGREADY then CastSpell(DFGSlot, target) end
 	if HXGREADY then CastSpell(HXGSlot, target) end
 	if BWCREADY then CastSpell(BWCSlot, target) end
 	if BRKREADY then CastSpell(BRKSlot, target) end
-	if TMTREADY and GetDistance(target) < 275 then CastSpell(TMTSlot) end
-	if RAHREADY and GetDistance(target) < 275 then CastSpell(RAHSlot) end
-	if RNDREADY and GetDistance(target) < 275 then CastSpell(RNDSlot) end
+	if TMTREADY and GetDistance(target) < 385 then CastSpell(TMTSlot) end
+	if RAHREADY and GetDistance(target) < 385 then CastSpell(RAHSlot) end
+	if RNDREADY and GetDistance(target) < 385 then CastSpell(RNDSlot) end
 
 end
 
+-- By Bilbao & Mr Articuno --
+
+function AddInteruptMenu()
+	Menu:addSubMenu('Interuptions', 'inter')
+		Menu.inter:addParam("inter1", "Interupt skills", SCRIPT_PARAM_ONOFF, false)
+		Menu.inter:addParam("inter2", "------------------------------", SCRIPT_PARAM_INFO, "")
+		for i, enemy in ipairs(GetEnemyHeroes()) do
+			for _, champ in pairs(InteruptionSpells) do
+				if enemy.charName == champ.charName then
+					table.insert(ToInterrupt, {charName = champ.charName, spellName = champ.spellName})
+				end
+			end
+		end
+		if #ToInterrupt > 0 then
+			for _, Inter in pairs(ToInterrupt) do
+				Menu.inter:addParam(Inter.spellName, "Stop "..Inter.charName.." "..Inter.spellName, SCRIPT_PARAM_ONOFF, true)
+			end
+		else
+			Menu.inter:addParam("bilbao", "No supported skills to interupt.", SCRIPT_PARAM_INFO, "")
+		end	
+end
+
+function OnProcessSpell(unit, spell)
+	if Menu.inter.inter1 and myHero:CanUseSpell(_W) == READY then
+		if #ToInterrupt > 0 then
+			for _, Inter in pairs(ToInterrupt) do
+				if spell.name == Inter.spellName and unit.team ~= myHero.team then
+					if Menu.inter[Inter.spellName] then
+						if ValidTarget(unit, Ranges.W) then
+							CastSpell(_W)
+						end
+					end
+				end
+			end
+		end
+	end
+
+	if unit.isMe and spell.name:lower():find("attack") or spell.name:lower():find("riventricleave") then
+		if tiamatReady or hydraReady then		
+			if CountEnemyHeroInRange(395, myHero) >= 1 then
+				if tiamatReady then
+					DelayAction(function() CastSpell(tiamatSlot) end, (spell.windUpTime - (GetLatency() / 2000)))					
+				elseif hydraReady then					
+					DelayAction(function() CastSpell(hydraSlot) end, (spell.windUpTime - (GetLatency() / 2000)))
+				end		
+			end
+		end		
+	end
+
+	if Menu.Laneclear.lclr or Menu.Jungleclear.jclr or Menu.Harass.harass or Menu.RivenCombo.combo then
+		if Menu.Ads.weaving then
+			if unit.isMe and spell and spell.target and ValidTarget(spell.target, 400) and spell.name:lower():find("attack") then
+				DelayAction(function()
+					if ValidTarget(spell.target, 400) and (TMTREADY or RAHREADY) then
+						if TMTREADY then
+							CastSpell(TMTSlot)
+						elseif RAHREADY then
+							CastSpell(RAHSlot)
+						end					
+					elseif myHero:CanUseSpell(_Q) == READY and ValidTarget(spell.target, (myHero.range + GetDistance(myHero.minBBox))) then
+						local QToPos = myHero + (Vector(spell.target.visionPos) - myHero):normalized() * 400
+						CastSpell(_Q, QToPos.x, QToPos.z)
+					end
+				end, (spell.windUpTime - (GetLatency() / 2000)))
+			end
+		else
+			if ValidTarget(spell.target, (myHero.range + GetDistance(myHero.minBBox))) then
+				CastSpell(_Q, spell.target.x, spell.target.z)
+			end
+		end
+	end
+end
+
+-- By Bilbao & Mr Articuno -- 
+
+
 -- Change skin function, made by Shalzuth
 function GenModelPacket(champ, skinId)
-	p = CLoLPacket(0x96)
+	p = CLoLPacket(0x97)
 	p:EncodeF(myHero.networkID)
 	p.pos = 1
 	t1 = p:Decode1()

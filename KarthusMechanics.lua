@@ -11,7 +11,7 @@
 if myHero.charName ~= "Karthus" then return end
 
 
-local version = 0.2
+local version = 0.3
 local AUTOUPDATE = true
 
 
@@ -145,7 +145,7 @@ function initComponents()
 	Menu.Ads:addSubMenu("VIP", "VIP")
 	Menu.Ads.VIP:addParam("spellCast", "Spell by Packet", SCRIPT_PARAM_ONOFF, true)
 	Menu.Ads.VIP:addParam("skin", "Use custom skin (Requires Reload)", SCRIPT_PARAM_ONOFF, false)
-	Menu.Ads.VIP:addParam("skin1", "Skin changer", SCRIPT_PARAM_SLICE, 1, 1, 7)
+	Menu.Ads.VIP:addParam("skin1", "Skin changer", SCRIPT_PARAM_SLICE, 1, 1, 6)
 	
 	Menu:addSubMenu("["..myHero.charName.." - Target Selector]", "targetSelector")
 	Menu.targetSelector:addTS(ts)
@@ -427,7 +427,7 @@ end
 
 -- Change skin function, made by Shalzuth
 function GenModelPacket(champ, skinId)
-	p = CLoLPacket(0x96)
+	p = CLoLPacket(0x97)
 	p:EncodeF(myHero.networkID)
 	p.pos = 1
 	t1 = p:Decode1()
