@@ -12,7 +12,7 @@
 if myHero.charName ~= "Riven" then return end
 
 
-local version = 0.78
+local version = 0.79
 local AUTOUPDATE = true
 
 
@@ -310,11 +310,8 @@ function AllInCombo(target, typeCombo)
 		
 		-- E+W(+Q) Range Combo --
 		-- Initiate part
-		if ValidTarget(target, 900) and Menu.RivenCombo.eSet.useE and EREADY and WREADY then
+		if ValidTarget(target, 900) and Menu.RivenCombo.eSet.useE and EREADY then
 			CastSpell(_E, target.x, target.z)
-      		if ValidTarget(target, Ranges.W) then
-        		ItemUsage(target)
-        	end
 		end
 		-- Ultimate passive cast part
 		if RREADY and myHero:GetSpellData(_R).name == 'RivenFengShuiEngine' and ValidTarget(target, 360) then
