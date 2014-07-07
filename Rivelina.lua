@@ -12,7 +12,7 @@
 if myHero.charName ~= "Riven" then return end
 
 
-local version = 0.76
+local version = 0.77
 local AUTOUPDATE = true
 
 
@@ -268,7 +268,7 @@ function Harass()
 		if Menu.Harass.useE and EREADY then
 			CastSpell(_E, enemy.x, enemy.z)
 		end
-		if Menu.Harass.useW and ValidTarget(enemy, Ranges.W) and WREADY then
+		if Menu.Harass.useW and ValidTarget(enemy, Ranges.W) and GetDistance(enemy.visionPos, myHero.visionPos) < Ranges.W and WREADY then
 			CastSpell(_W)
 			ItemUsage(enemy)
 		end
@@ -297,7 +297,7 @@ end
 function AllInCombo(target, typeCombo)
 	if target ~= nil and typeCombo == 0 then
 		-- Secured stun
-		if ValidTarget(target, Ranges.W - 20) and WREADY then
+		if ValidTarget(target, Ranges.W - 20) and GetDistance(enemy.visionPos, myHero.visionPos) < Ranges.W and WREADY then
 			CastSpell(_W)
       		if ValidTarget(target, Ranges.W) then
         		ItemUsage(target)
@@ -326,12 +326,12 @@ function AllInCombo(target, typeCombo)
 			end
 		end
 		-- W casting part with range checks
-		if ValidTarget(target, Ranges.W) and WREADY and Menu.RivenCombo.wSet.useW then
+		if ValidTarget(target, Ranges.W) and GetDistance(target.visionPos, myHero.visionPos) < Ranges.W and WREADY and Menu.RivenCombo.wSet.useW then
 			CastSpell(_W)
       		if ValidTarget(target, Ranges.W) then
         		ItemUsage(target)
         	end
-		elseif ValidTarget(target, Ranges.E + Ranges.W) and EREADY and Menu.RivenCombo.eSet.useE then
+		elseif ValidTarget(target, Ranges.E + Ranges.W) and GetDistance(enemy.visionPos, myHero.visionPos) < Ranges.W + Ranges.E and EREADY and Menu.RivenCombo.eSet.useE then
 			CastSpell(_E, target.x, target.z)
       		if ValidTarget(target, Ranges.W) then
         		ItemUsage(target)
@@ -367,7 +367,7 @@ function LaneClear()
 			ItemUsage(enemyMinion)
 			CastSpell(_E, enemyMinion.x, enemyMinion.z)
 		end
-		if Menu.Laneclear.useClearW and WREADY and ValidTarget(enemyMinion, Ranges.W) then
+		if Menu.Laneclear.useClearW and WREADY and ValidTarget(enemyMinion, Ranges.W) and GetDistance(enemyMinion.visionPos, myHero.visionPos) < Ranges.W then
 			ItemUsage(enemyMinion)
 			CastSpell(_W)
 		end
@@ -380,7 +380,7 @@ function JungleClear()
 			if Menu.Jungleclear.useClearE and EREADY then
 				CastSpell(_E, jungleMinion.x, jungleMinion.z)
 			end
-			if Menu.Jungleclear.useClearW and WREADY and ValidTarget(jungleMinion, Ranges.W) then
+			if Menu.Jungleclear.useClearW and WREADY and ValidTarget(jungleMinion, Ranges.W) and GetDistance(jungleMinion.visionPos, myHero.visionPos) < Ranges.W then
 				ItemUsage(jungleMinion)
 				CastSpell(_W)
 			end
@@ -451,7 +451,7 @@ end
 function EscapeMode()
 	myHero:MoveTo(mousePos.x, mousePos.z)
 	for i, enemy in ipairs(GetEnemyHeroes()) do
-		if enemy ~= nil and ValidTarget(enemy, Ranges.W) and WREADY then
+		if enemy ~= nil and ValidTarget(enemy, Ranges.W) and GetDistance(enemy.visionPos, myHero.visionPos) < Ranges.W and WREADY then
 			CastSpell(_W)
 		end
 	end
@@ -539,25 +539,13 @@ function OnProcessSpell(unit, spell)
 			for _, Inter in pairs(ToInterrupt) do
 				if spell.name == Inter.spellName and unit.team ~= myHero.team then
 					if Menu.inter[Inter.spellName] then
-						if ValidTarget(unit, Ranges.W) then
+						if ValidTarget(unit, Ranges.W) and GetDistance(unit.visionPos, myHero.visionPos) < Ranges.W then
 							CastSpell(_W)
 						end
 					end
 				end
 			end
 		end
-	end
-
-	if unit.isMe and spell.name:lower():find("attack") or spell.name:lower():find("riventricleave") then
-		if tiamatReady or hydraReady then		
-			if CountEnemyHeroInRange(395, myHero) >= 1 then
-				if tiamatReady then
-					DelayAction(function() CastSpell(tiamatSlot) end, (spell.windUpTime - (GetLatency() / 2000)))					
-				elseif hydraReady then					
-					DelayAction(function() CastSpell(hydraSlot) end, (spell.windUpTime - (GetLatency() / 2000)))
-				end		
-			end
-		end		
 	end
 
 	if Menu.Laneclear.lclr or Menu.Jungleclear.jclr or Menu.Harass.harass or Menu.RivenCombo.combo then
