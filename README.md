@@ -1,4 +1,0 @@
-BolScripts
-==========
-
-Scripts

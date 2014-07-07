@@ -68,9 +68,7 @@ local BRKSlot, DFGSlot, HXGSlot, BWCSlot, TMTSlot, RAHSlot, RNDSlot, YGBSlot = n
 local BRKREADY, DFGREADY, HXGREADY, BWCREADY, TMTREADY, RAHREADY, RNDREADY, YGBREADY = false, false, false, false, false, false, false, false
 
 --[[Auto Attacks]]--
-local lastBasicAttack = 0
-local swingDelay = 0.25
-local swing = false
+local lastSkin = 0
 
 --[[Global Vars]]--
 	ToInterrupt = {}
@@ -176,6 +174,7 @@ function initComponents()
 	jungleMinions = minionManager(MINION_JUNGLE, 360, myHero, MINION_SORT_MAXHEALTH_DEC)
 	
 	if Menu.Ads.VIP.skin and VIP_USER then
+		lastSkin = Menu.Ads.VIP.skin1
 		GenModelPacket("Riven", Menu.Ads.VIP.skin1)
 	end
 	
@@ -189,6 +188,11 @@ function OnTick()
 	jungleMinions:update()
 	CDHandler()
 	KillSteal()
+
+	if Menu.Ads.VIP.skin and VIP_USER and lastSkin ~= Menu.Ads.VIP.skin1 then
+		lastSkin = Menu.Ads.VIP.skin1
+		GenModelPacket("Riven", Menu.Ads.VIP.skin1)
+	end
 
 	DFGSlot, HXGSlot, BWCSlot, SheenSlot, TrinitySlot, LichBaneSlot, BRKSlot, TMTSlot, RAHSlot, RNDSlot, STDSlot = GetInventorySlotItem(3128), GetInventorySlotItem(3146), GetInventorySlotItem(3144), GetInventorySlotItem(3057), GetInventorySlotItem(3078), GetInventorySlotItem(3100), GetInventorySlotItem(3153), GetInventorySlotItem(3077), GetInventorySlotItem(3074), GetInventorySlotItem(3143), GetInventorySlotItem(3131)
 	QREADY = (myHero:CanUseSpell(_Q) == READY)
