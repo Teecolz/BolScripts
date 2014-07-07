@@ -297,7 +297,7 @@ end
 function AllInCombo(target, typeCombo)
 	if target ~= nil and typeCombo == 0 then
 		-- Secured stun
-		if ValidTarget(target, Ranges.W - 20) and GetDistance(enemy.visionPos, myHero.visionPos) < Ranges.W and WREADY then
+		if ValidTarget(target, Ranges.W - 20) and GetDistance(target.visionPos, myHero.visionPos) < Ranges.W and WREADY then
 			CastSpell(_W)
       		if ValidTarget(target, Ranges.W) then
         		ItemUsage(target)
@@ -331,7 +331,7 @@ function AllInCombo(target, typeCombo)
       		if ValidTarget(target, Ranges.W) then
         		ItemUsage(target)
         	end
-		elseif ValidTarget(target, Ranges.E + Ranges.W) and GetDistance(enemy.visionPos, myHero.visionPos) < Ranges.W + Ranges.E and EREADY and Menu.RivenCombo.eSet.useE then
+		elseif ValidTarget(target, Ranges.E + Ranges.W) and GetDistance(target.visionPos, myHero.visionPos) < Ranges.W + Ranges.E and EREADY and Menu.RivenCombo.eSet.useE then
 			CastSpell(_E, target.x, target.z)
       		if ValidTarget(target, Ranges.W) then
         		ItemUsage(target)
