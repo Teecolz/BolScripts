@@ -28,7 +28,7 @@ end
 if DOWNLOADING_SOURCELIB then print("Downloading required libraries, please wait...") return end
 
 if AUTOUPDATE then
-	SourceUpdater(SCRIPT_NAME, version, "raw.github.com", "/gmlyra/BolScripts/master/"..SCRIPT_NAME..".lua", SCRIPT_PATH .. GetCurrentEnv().FILE_NAME, "/gmlyra/BolScripts/VersionFiles/master/"..SCRIPT_NAME..".version"):CheckUpdate()
+	SourceUpdater(SCRIPT_NAME, version, "raw.github.com", "/gmlyra/BolScripts/master/"..SCRIPT_NAME..".lua", SCRIPT_PATH .. GetCurrentEnv().FILE_NAME, "/gmlyra/BolScripts/master/VersionFiles/"..SCRIPT_NAME..".version"):CheckUpdate()
 end
 
 local RequireI = Require("SourceLib")
@@ -92,7 +92,28 @@ function initComponents()
 
 	if VIP_USER then
 		require "Prodiction"
+		require "Collision"
 	    Prod = ProdictManager.GetInstance()
+	    ProQ = Prod:AddProdictionObject(_Q, skills.skillQ.range, skills.skillQ.speed, skills.skillQ.delay, skills.skillQ.width) 
+	    ProE = Prod:AddProdictionObject(_E, skills.skillE.range, skills.skillE.speed, skills.skillE.delay, skills.skillE.width)
+	    ProdictECol = Collision(_E, skills.skillE.range, skills.skillE.speed, skills.skillE.delay, skills.skillE.width)
+
+	    -- Put Callbacks On
+	    for i = 1, heroManager.iCount do
+			local hero = heroManager:GetHero(i)
+			if hero.team ~= myHero.team then
+				-- Spell Q --
+				ProdQ:GetPredictionOnDash(hero, OnDashFunc)
+				ProdQ:GetPredictionAfterDash(hero, AfterDashFunc)
+				ProdQ:GetPredictionAfterImmobile(hero, AfterImmobileFunc)
+				ProdQ:GetPredictionOnImmobile(hero, OnImmobileFunc)
+				-- Spell E --
+				ProdE:GetPredictionOnDash(hero, OnDashFunc)
+				ProdE:GetPredictionAfterDash(hero, AfterDashFunc)
+				ProdE:GetPredictionAfterImmobile(hero, AfterImmobileFunc)
+				ProdE:GetPredictionOnImmobile(hero, OnImmobileFunc)
+       		end
+	    end
 	end
 
 	-- Target Selector
@@ -288,26 +309,45 @@ end
 
 function AllInCombo(target, typeCombo)
 	if target ~= nil and typeCombo == 0 then
-		if RREADY and Menu.GragasCombo.rSet.useR and ValidTarget(target, Ranges.R - 100) then
-			smartUltimate(target)
+
+		if VIP_USER then
+			if RREADY and Menu.GragasCombo.rSet.useR and ValidTarget(target, Ranges.R - 100) then
+				smartUltimate(target)
+			end
+
+			if Menu.GragasCombo.eSet.useE and ValidTarget(target, Ranges.E) and EREADY then
+				ProdE:GetPredictionCallBack(target, CastSkill)
+			end
+
+			if Menu.GragasCombo.qSet.useQ and ValidTarget(target, Ranges.Q) and QREADY then
+				ProdQ:GetPredictionCallBack(target, CastSkill)
+			end
+		else
+			if QREADY and Menu.GragasCombo.qSet.useQ and ValidTarget(target, Ranges.Q) then
+				local qPosition, qChance = VP:GetLineCastPosition(target, skills.skillQ.delay, skills.skillQ.width, skills.skillQ.range, skills.skillQ.speed, myHero, false)
+
+			    if qPosition ~= nil and GetDistance(qPosition) < skills.skillQ.range and qChance >= 2 then
+			      CastSpell(_Q, qPosition.x, qPosition.z)
+			    end
+			end
+
+			if RREADY and Menu.GragasCombo.rSet.useR and ValidTarget(target, Ranges.R - 100) then
+				smartUltimate(target)
+			end
+
+			if Menu.GragasCombo.eSet.useE and ValidTarget(target, Ranges.E) and EREADY then
+				local ePosition, eChance = VP:GetLineCastPosition(target, skills.skillQ.delay, skills.skillQ.width, skills.skillQ.range, skills.skillQ.speed, myHero, true)
+
+			    if ePosition ~= nil and GetDistance(ePosition) < skills.skillE.range and eChance >= 2 then
+			      CastSpell(_E, ePosition.x, ePosition.z)
+			    end
+			end
 		end
+
 		if WREADY and Menu.GragasCombo.wSet.useW and ValidTarget(target, Ranges.E + Ranges.AA) then
-			CastSpell(_W)
+				CastSpell(_W)
 		end
-		if QREADY and Menu.GragasCombo.qSet.useQ and ValidTarget(target, Ranges.Q) then
-			local qPosition, qChance = VP:GetLineCastPosition(target, skills.skillQ.delay, skills.skillQ.width, skills.skillQ.range, skills.skillQ.speed, myHero, false)
-
-		    if qPosition ~= nil and GetDistance(qPosition) < skills.skillQ.range and qChance >= 2 then
-		      CastSpell(_Q, qPosition.x, qPosition.z)
-		    end
-		end
-		if Menu.GragasCombo.eSet.useE and ValidTarget(target, Ranges.E) and EREADY then
-			local ePosition, eChance = VP:GetLineCastPosition(target, skills.skillQ.delay, skills.skillQ.width, skills.skillQ.range, skills.skillQ.speed, myHero, true)
-
-		    if ePosition ~= nil and GetDistance(ePosition) < skills.skillE.range and eChance >= 2 then
-		      CastSpell(_E, ePosition.x, ePosition.z)
-		    end
-		end
+		
 	end
 end
 
@@ -388,7 +428,7 @@ function IgniteKS()
 		local Enemies = GetEnemyHeroes()
 		for i, val in ipairs(Enemies) do
 			if ValidTarget(val, 600) then
-				if getDmg("IGNITE", val, myHero) > val.health and RReady ~= true and GetDistance(val) >= Menu.Ads.KS.igniteRange and not val.bInvulnerable then
+				if getDmg("IGNITE", val, myHero) > val.health and RReady ~= true and GetDistance(val) >= Menu.Ads.KS.igniteRange then
 					CastSpell(ignite, val)
 				end
 			end
@@ -482,12 +522,52 @@ function GenModelPacket(champ, skinId)
 	RecvPacket(p)
 end
 
-function OnDashFunc(unit, pos, spell)
-    if GetDistance(pos) < spell.range and myHero:CanUseSpell(spell.Name) == READY then
-        CastSpell(spell.Name, pos.x, pos.z)
-            
+-- Prodction support --
+
+function CastQ(unit, pos, spell)
+    if GetDistance(pos) - getHitBoxRadius(unit)/2 < skills.skillQ.range then
+        CastSpell(_Q, pos.x, pos.z)
     end
 end
+
+function CastE(unit, pos, spell)
+    if GetDistance(pos) - getHitBoxRadius(unit)/2 < skills.skillE.range then
+        local willCollide = ProdictECol:GetMinionCollision(pos, myHero)
+        if not willCollide then CastSpell(_E, pos.x, pos.z) end
+    end
+end
+
+function OnDashFunc(unit, pos, spell)
+	if GetDistance(pos) < spell.range and myHero:CanUseSpell(spell.Name) == READY then
+		CastSpell(spell.Name, pos.x, pos.z)
+	end
+end
+
+function AfterDashFunc(unit, pos, spell)
+	if GetDistance(pos) < spell.range and myHero:CanUseSpell(spell.Name) == READY then
+		CastSpell(spell.Name, pos.x, pos.z)
+	end
+end
+
+function AfterImmobileFunc(unit, pos, spell)
+	if GetDistance(pos) < spell.range and myHero:CanUseSpell(spell.Name) == READY then
+		CastSpell(spell.Name, pos.x, pos.z)
+	end
+end
+
+function OnImmobileFunc(unit, pos, spell)
+	if GetDistance(pos) < spell.range and myHero:CanUseSpell(spell.Name) == READY then
+		CastSpell(spell.Name, pos.x, pos.z)
+	end
+end
+
+function CastSkill(unit,pos)
+    if GetDistance(pos) < spell.range and myHero:CanUseSpell(spell.Name) == READY then
+		CastSpell(spell.Name, pos.x, pos.z)
+    end
+end
+
+-- End Prodction Support --
 
 function OnDraw()
 	
