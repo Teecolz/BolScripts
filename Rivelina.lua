@@ -12,7 +12,7 @@
 if myHero.charName ~= "Riven" then return end
 
 
-local version = 0.79
+local version = 0.8
 local AUTOUPDATE = true
 
 
@@ -68,7 +68,9 @@ local BRKSlot, DFGSlot, HXGSlot, BWCSlot, TMTSlot, RAHSlot, RNDSlot, YGBSlot = n
 local BRKREADY, DFGREADY, HXGREADY, BWCREADY, TMTREADY, RAHREADY, RNDREADY, YGBREADY = false, false, false, false, false, false, false, false
 
 --[[Auto Attacks]]--
-local lastSkin = 0
+local lastBasicAttack = 0
+local swingDelay = 0.45
+local swing = false
 
 --[[Global Vars]]--
 	ToInterrupt = {}
@@ -113,6 +115,8 @@ function initComponents()
 	Menu:addSubMenu("["..myHero.charName.." - Combo]", "RivenCombo")
 	Menu.RivenCombo:addParam("combo", "Combo mode", SCRIPT_PARAM_ONKEYDOWN, false, 32)
 	-- Menu.RivenCombo:addParam("useF", "Use Flash in Combo ", SCRIPT_PARAM_ONOFF, false)
+	Menu.RivenCombo:addSubMenu("Q Settings", "qSet")
+	Menu.RivenCombo.qSet:addParam("useQ", "Use Q in combo", SCRIPT_PARAM_ONOFF, true)
 	Menu.RivenCombo:addSubMenu("W Settings", "wSet")
 	Menu.RivenCombo.wSet:addParam("useW", "Use W in combo", SCRIPT_PARAM_ONOFF, true)
 	Menu.RivenCombo:addSubMenu("E Settings", "eSet")
@@ -124,16 +128,19 @@ function initComponents()
 	
 	Menu:addSubMenu("["..myHero.charName.." - Harass]", "Harass")
 	Menu.Harass:addParam("harass", "Harass", SCRIPT_PARAM_ONKEYDOWN, false, string.byte("G"))
+	Menu.Harass:addParam("useQ", "Use Q in Harass", SCRIPT_PARAM_ONOFF, true)
 	Menu.Harass:addParam("useW", "Use W in Harass", SCRIPT_PARAM_ONOFF, true)
 	Menu.Harass:addParam("useE", "Use E in Harass", SCRIPT_PARAM_ONOFF, true)
 	
 	Menu:addSubMenu("["..myHero.charName.." - Laneclear]", "Laneclear")
 	Menu.Laneclear:addParam("lclr", "Laneclear Key", SCRIPT_PARAM_ONKEYDOWN, false, string.byte("V"))
+	Menu.Laneclear:addParam("useClearQ", "Use Q in Laneclear", SCRIPT_PARAM_ONOFF, true)
 	Menu.Laneclear:addParam("useClearW", "Use W in Laneclear", SCRIPT_PARAM_ONOFF, true)
 	Menu.Laneclear:addParam("useClearE", "Use E in Laneclear", SCRIPT_PARAM_ONOFF, true)
 	
 	Menu:addSubMenu("["..myHero.charName.." - Jungleclear]", "Jungleclear")
 	Menu.Jungleclear:addParam("jclr", "Jungleclear Key", SCRIPT_PARAM_ONKEYDOWN, false, string.byte("V"))
+	Menu.Jungleclear:addParam("useClearQ", "Use Q in Jungleclear", SCRIPT_PARAM_ONOFF, true)
 	Menu.Jungleclear:addParam("useClearW", "Use W in Jungleclear", SCRIPT_PARAM_ONOFF, true)
 	Menu.Jungleclear:addParam("useClearE", "Use E in Jungleclear", SCRIPT_PARAM_ONOFF, true)
 	
@@ -174,7 +181,6 @@ function initComponents()
 	jungleMinions = minionManager(MINION_JUNGLE, 360, myHero, MINION_SORT_MAXHEALTH_DEC)
 	
 	if Menu.Ads.VIP.skin and VIP_USER then
-		lastSkin = Menu.Ads.VIP.skin1
 		GenModelPacket("Riven", Menu.Ads.VIP.skin1)
 	end
 	
@@ -188,11 +194,6 @@ function OnTick()
 	jungleMinions:update()
 	CDHandler()
 	KillSteal()
-
-	if Menu.Ads.VIP.skin and VIP_USER and lastSkin ~= Menu.Ads.VIP.skin1 then
-		lastSkin = Menu.Ads.VIP.skin1
-		GenModelPacket("Riven", Menu.Ads.VIP.skin1)
-	end
 
 	DFGSlot, HXGSlot, BWCSlot, SheenSlot, TrinitySlot, LichBaneSlot, BRKSlot, TMTSlot, RAHSlot, RNDSlot, STDSlot = GetInventorySlotItem(3128), GetInventorySlotItem(3146), GetInventorySlotItem(3144), GetInventorySlotItem(3057), GetInventorySlotItem(3078), GetInventorySlotItem(3100), GetInventorySlotItem(3153), GetInventorySlotItem(3077), GetInventorySlotItem(3074), GetInventorySlotItem(3143), GetInventorySlotItem(3131)
 	QREADY = (myHero:CanUseSpell(_Q) == READY)
@@ -272,6 +273,14 @@ function Harass()
 		if Menu.Harass.useE and EREADY then
 			CastSpell(_E, enemy.x, enemy.z)
 		end
+
+		if Menu.Harass.useQ and QREADY then
+			if Menu.Ads.weaving and GetDistance(enemy) <= Ranges.Q + Ranges.AA and not swing then
+				CastSpell(_Q, enemy.x, enemy.z)
+				swing = true
+			end
+		end
+
 		if Menu.Harass.useW and ValidTarget(enemy, Ranges.W) and GetDistance(enemy.visionPos, myHero.visionPos) < Ranges.W and WREADY then
 			CastSpell(_W)
 			ItemUsage(enemy)
@@ -308,10 +317,17 @@ function AllInCombo(target, typeCombo)
         	end
 		end
 
-		if not Menu.Ads.hitOnly and GetDistance(target) >= Ranges.Q then
-			CastSpell(_Q, target.x, target.z)
+		if QREADY and Menu.RivenCombo.qSet.useQ then
+			if not Menu.Ads.hitOnly and GetDistance(target) >= Ranges.Q then
+				CastSpell(_Q, target.x, target.z)
+			end
+
+			if Menu.Ads.weaving and GetDistance(target) <= Ranges.Q + Ranges.AA and not swing then
+				CastSpell(_Q, target.x, target.z)
+				swing = true
+			end
 		end
-		
+
 		-- E+W(+Q) Range Combo --
 		-- Initiate part
 		if ValidTarget(target, 900) and Menu.RivenCombo.eSet.useE and EREADY then
@@ -368,6 +384,18 @@ function LaneClear()
 			ItemUsage(enemyMinion)
 			CastSpell(_E, enemyMinion.x, enemyMinion.z)
 		end
+
+		if QREADY and Menu.Laneclear.useClearQ then
+			if not Menu.Ads.hitOnly and GetDistance(enemyMinion) >= Ranges.Q then
+				CastSpell(_Q, enemyMinion.x, enemyMinion.z)
+			end
+
+			if Menu.Ads.weaving and GetDistance(enemyMinion) <= Ranges.Q + Ranges.AA and not swing then
+				CastSpell(_Q, enemyMinion.x, enemyMinion.z)
+				swing = true
+			end
+		end
+
 		if Menu.Laneclear.useClearW and WREADY and ValidTarget(enemyMinion, Ranges.W) and GetDistance(enemyMinion.visionPos, myHero.visionPos) < Ranges.W then
 			ItemUsage(enemyMinion)
 			CastSpell(_W)
@@ -381,6 +409,18 @@ function JungleClear()
 			if Menu.Jungleclear.useClearE and EREADY then
 				CastSpell(_E, jungleMinion.x, jungleMinion.z)
 			end
+
+			if QREADY and Menu.Jungleclear.useClearQ then
+				if not Menu.Ads.hitOnly and GetDistance(jungleMinion) >= Ranges.Q then
+					CastSpell(_Q, jungleMinion.x, jungleMinion.z)
+				end
+
+				if Menu.Ads.weaving and GetDistance(jungleMinion) <= Ranges.Q + Ranges.AA and not swing then
+					CastSpell(_Q, jungleMinion.x, jungleMinion.z)
+					swing = true
+				end
+			end
+
 			if Menu.Jungleclear.useClearW and WREADY and ValidTarget(jungleMinion, Ranges.W) and GetDistance(jungleMinion.visionPos, myHero.visionPos) < Ranges.W then
 				ItemUsage(jungleMinion)
 				CastSpell(_W)
@@ -560,8 +600,7 @@ function OnProcessSpell(unit, spell)
 							CastSpell(RAHSlot)
 						end					
 					elseif myHero:CanUseSpell(_Q) == READY and ValidTarget(spell.target, (myHero.range + GetDistance(myHero.minBBox))) then
-						local QToPos = myHero + (Vector(spell.target.visionPos) - myHero):normalized() * 400
-						CastSpell(_Q, QToPos.x, QToPos.z)
+						swing = false
 					end
 				end, (spell.windUpTime - (GetLatency() / 2000)))
 			end
