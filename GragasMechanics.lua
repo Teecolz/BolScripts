@@ -94,8 +94,8 @@ function initComponents()
 		require "Prodiction"
 		require "Collision"
 	    Prod = ProdictManager.GetInstance()
-	    ProQ = Prod:AddProdictionObject(_Q, skills.skillQ.range, skills.skillQ.speed, skills.skillQ.delay, skills.skillQ.width) 
-	    ProE = Prod:AddProdictionObject(_E, skills.skillE.range, skills.skillE.speed, skills.skillE.delay, skills.skillE.width)
+	    ProdQ = Prod:AddProdictionObject(_Q, skills.skillQ.range, skills.skillQ.speed, skills.skillQ.delay, skills.skillQ.width) 
+	    ProdE = Prod:AddProdictionObject(_E, skills.skillE.range, skills.skillE.speed, skills.skillE.delay, skills.skillE.width)
 	    ProdictECol = Collision(_E, skills.skillE.range, skills.skillE.speed, skills.skillE.delay, skills.skillE.width)
 
 	    -- Put Callbacks On
@@ -158,7 +158,7 @@ function initComponents()
 	AddProcessSpellCallback(function(unit, spell)
 		if unit.isMe and (spell.name:find("Attack") ~= nil) then
             --swing = true
-            lastBasicAttack = os.clock()
+            --lastBasicAttack = os.clock()
         end
 		animationCancel(unit, spell)
 	end)
@@ -316,11 +316,19 @@ function AllInCombo(target, typeCombo)
 			end
 
 			if Menu.GragasCombo.eSet.useE and ValidTarget(target, Ranges.E) and EREADY then
-				ProdE:GetPredictionCallBack(target, CastSkill)
+				local pos, info = Prodiction.GetPrediction(target, skills.skillE.range, skills.skillE.speed, skills.skillE.delay, skills.skillE.width)
+
+				if pos then
+					CastSpell(_E, pos.x, pos.z)
+				end
 			end
 
 			if Menu.GragasCombo.qSet.useQ and ValidTarget(target, Ranges.Q) and QREADY then
-				ProdQ:GetPredictionCallBack(target, CastSkill)
+				local pos, info = Prodiction.GetPrediction(target, skills.skillQ.range, skills.skillQ.speed, skills.skillQ.delay, skills.skillQ.width)
+
+				if pos then
+					CastSpell(_Q, pos.x, pos.z)
+				end
 			end
 		else
 			if QREADY and Menu.GragasCombo.qSet.useQ and ValidTarget(target, Ranges.Q) then
@@ -345,7 +353,7 @@ function AllInCombo(target, typeCombo)
 		end
 
 		if WREADY and Menu.GragasCombo.wSet.useW and ValidTarget(target, Ranges.E + Ranges.AA) then
-				CastSpell(_W)
+			CastSpell(_W)
 		end
 		
 	end
