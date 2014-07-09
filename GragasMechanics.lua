@@ -34,6 +34,9 @@ end
 local RequireI = Require("SourceLib")
 RequireI:Add("vPrediction", "https://raw.github.com/Hellsing/BoL/master/common/VPrediction.lua")
 RequireI:Add("SOW", "https://raw.github.com/Hellsing/BoL/master/common/SOW.lua")
+if VIP_USER then
+	RequireI:Add("Prodiction", "https://bitbucket.org/Klokje/public-klokjes-bol-scripts/raw/ec830facccefb3b52212dba5696c08697c3c2854/Test/Prodiction/Prodiction.lua")	
+end
 --RequireI:Add("mrLib", "https://raw.githubusercontent.com/gmlyra/BolScripts/master/common/mrLib.lua")
 
 RequireI:Check()
@@ -86,6 +89,12 @@ function initComponents()
 	VP = VPrediction()
 	-- SOW Declare
 	Orbwalker = SOW(VP)
+
+	if VIP_USER then
+		require "Prodiction"
+	    Prod = ProdictManager.GetInstance()
+	end
+
 	-- Target Selector
 	ts = TargetSelector(TARGET_NEAR_MOUSE, 900)
 	
@@ -471,6 +480,13 @@ function GenModelPacket(champ, skinId)
 	end
 	p:Hide()
 	RecvPacket(p)
+end
+
+function OnDashFunc(unit, pos, spell)
+    if GetDistance(pos) < spell.range and myHero:CanUseSpell(spell.Name) == READY then
+        CastSpell(spell.Name, pos.x, pos.z)
+            
+    end
 end
 
 function OnDraw()

@@ -12,7 +12,7 @@
 if myHero.charName ~= "Riven" then return end
 
 
-local version = 0.81
+local version = 0.82
 local AUTOUPDATE = true
 
 
@@ -110,6 +110,7 @@ function initComponents()
 	Menu = scriptConfig("Rivelina by Lillgoalie & Mr Articuno", "RivenBLMA")
 	
 	Menu:addSubMenu("["..myHero.charName.." - Orbwalker]", "SOWorb")
+	--Menu.Orbwalk:addParam("orbwalking", "Use Own Orbwalk", SCRIPT_PARAM_ONOFF, true)
 	Orbwalker:LoadToMenu(Menu.SOWorb)
 	
 	Menu:addSubMenu("["..myHero.charName.." - Combo]", "RivenCombo")
@@ -267,23 +268,27 @@ end
 -- Harass --
 
 function Harass()
-	local enemy = ts.target
+	local target = ts.target
 	
-	if enemy ~= nil and ValidTarget(enemy) then
+	if target ~= nil and ValidTarget(target) then
 		if Menu.Harass.useE and EREADY then
-			CastSpell(_E, enemy.x, enemy.z)
+			CastSpell(_E, target.x, target.z)
 		end
 
 		if Menu.Harass.useQ and QREADY then
-			if Menu.Ads.weaving and GetDistance(enemy) <= Ranges.Q + Ranges.AA and not swing then
-				CastSpell(_Q, enemy.x, enemy.z)
-				swing = true
+			if Menu.Ads.weaving and GetDistance(target) <= Ranges.Q + Ranges.AA then
+				if not swing then
+					CastSpell(_Q, target.x, target.z)
+					swing = true
+				else
+					Orbwalker:Attack(target)
+				end
 			end
 		end
 
-		if Menu.Harass.useW and ValidTarget(enemy, Ranges.W) and GetDistance(enemy.visionPos, myHero.visionPos) < Ranges.W and WREADY then
+		if Menu.Harass.useW and ValidTarget(target, Ranges.W) and GetDistance(target.visionPos, myHero.visionPos) < Ranges.W and WREADY then
 			CastSpell(_W)
-			ItemUsage(enemy)
+			ItemUsage(target)
 		end
 	end
 	
@@ -322,9 +327,13 @@ function AllInCombo(target, typeCombo)
 				CastSpell(_Q, target.x, target.z)
 			end
 
-			if Menu.Ads.weaving and GetDistance(target) <= Ranges.Q + Ranges.AA and not swing then
-				CastSpell(_Q, target.x, target.z)
-				swing = true
+			if Menu.Ads.weaving and GetDistance(target) <= Ranges.Q + Ranges.AA then
+				if not swing then
+					CastSpell(_Q, target.x, target.z)
+					swing = true
+				else
+					Orbwalker:Attack(target)
+				end
 			end
 		end
 
@@ -343,12 +352,12 @@ function AllInCombo(target, typeCombo)
 			end
 		end
 		-- W casting part with range checks
-		if ValidTarget(target, Ranges.W) and GetDistance(target) < Ranges.W and WREADY and Menu.RivenCombo.wSet.useW then
+		if ValidTarget(target, Ranges.W) and GetDistance(target.visionPos, myHero.visionPos) < Ranges.W and WREADY and Menu.RivenCombo.wSet.useW then
 			CastSpell(_W)
       		if ValidTarget(target, Ranges.W) then
         		ItemUsage(target)
         	end
-		elseif ValidTarget(target, Ranges.E + Ranges.W) and GetDistance(target) < Ranges.W + Ranges.E and EREADY and Menu.RivenCombo.eSet.useE then
+		elseif ValidTarget(target, Ranges.E + Ranges.W) and GetDistance(target.visionPos, myHero.visionPos) < Ranges.W + Ranges.E and EREADY and Menu.RivenCombo.eSet.useE then
 			CastSpell(_E, target.x, target.z)
       		if ValidTarget(target, Ranges.W) then
         		ItemUsage(target)
@@ -379,52 +388,61 @@ end
 -- All In Combo --
 
 function LaneClear()
-	for i, enemyMinion in pairs(enemyMinions.objects) do
-		if Menu.Laneclear.useClearE and EREADY and ValidTarget(enemyMinion, Ranges.E) then
-			ItemUsage(enemyMinion)
-			CastSpell(_E, enemyMinion.x, enemyMinion.z)
+	for i, target in pairs(enemyMinions.objects) do
+		if Menu.Laneclear.useClearE and EREADY and ValidTarget(target, Ranges.E) then
+			ItemUsage(target)
+			CastSpell(_E, target.x, target.z)
 		end
 
 		if QREADY and Menu.Laneclear.useClearQ then
-			if not Menu.Ads.hitOnly and GetDistance(enemyMinion) >= Ranges.Q then
-				CastSpell(_Q, enemyMinion.x, enemyMinion.z)
+			if not Menu.Ads.hitOnly and GetDistance(target) >= Ranges.Q then
+				CastSpell(_Q, target.x, target.z)
 			end
 
-			if Menu.Ads.weaving and GetDistance(enemyMinion) <= Ranges.Q + Ranges.AA and not swing then
-				CastSpell(_Q, enemyMinion.x, enemyMinion.z)
-				swing = true
+			if Menu.Ads.weaving and GetDistance(target) <= Ranges.Q + Ranges.AA then
+				if not swing then
+					CastSpell(_Q, target.x, target.z)
+					swing = true
+				else
+					Orbwalker:Attack(target)
+				end
 			end
 		end
 
-		if Menu.Laneclear.useClearW and WREADY and ValidTarget(enemyMinion, Ranges.W) and GetDistance(enemyMinion.visionPos, myHero.visionPos) < Ranges.W then
-			ItemUsage(enemyMinion)
+		if Menu.Laneclear.useClearW and WREADY and ValidTarget(target, Ranges.W) and GetDistance(target.visionPos, myHero.visionPos) < Ranges.W then
+			ItemUsage(target)
 			CastSpell(_W)
 		end
 	end
 end
 
 function JungleClear()
-	for i, jungleMinion in pairs(jungleMinions.objects) do
-		if jungleMinion ~= nil then
+	for i, target in pairs(jungleMinions.objects) do
+		if target ~= nil then
 			if Menu.Jungleclear.useClearE and EREADY then
-				CastSpell(_E, jungleMinion.x, jungleMinion.z)
+				CastSpell(_E, target.x, target.z)
 			end
 
 			if QREADY and Menu.Jungleclear.useClearQ then
-				if not Menu.Ads.hitOnly and GetDistance(jungleMinion) >= Ranges.Q then
-					CastSpell(_Q, jungleMinion.x, jungleMinion.z)
+				if not Menu.Ads.hitOnly and GetDistance(target) >= Ranges.Q then
+					CastSpell(_Q, target.x, target.z)
 				end
 
-				if Menu.Ads.weaving and GetDistance(jungleMinion) <= Ranges.Q + Ranges.AA and not swing then
-					CastSpell(_Q, jungleMinion.x, jungleMinion.z)
-					swing = true
+				if Menu.Ads.weaving and GetDistance(target) <= Ranges.Q + Ranges.AA then
+					if not swing then
+						CastSpell(_Q, target.x, target.z)
+						swing = true
+					else
+						Orbwalker:Attack(target)
+					end
 				end
 			end
 
-			if Menu.Jungleclear.useClearW and WREADY and ValidTarget(jungleMinion, Ranges.W) and GetDistance(jungleMinion.visionPos, myHero.visionPos) < Ranges.W then
-				ItemUsage(jungleMinion)
+			if Menu.Jungleclear.useClearW and WREADY and ValidTarget(target, Ranges.W) and GetDistance(target) <= Ranges.W then
+				ItemUsage(target)
 				CastSpell(_W)
 			end
+
 		end
 	end
 end
@@ -613,6 +631,36 @@ function OnProcessSpell(unit, spell)
 end
 
 -- By Bilbao & Mr Articuno -- 
+
+
+--Start Manciuszz orbwalker credit
+function OrbWalking(target)
+    if TimeToAttack() and GetDistance(target) <= Ranges.AA then
+        myHero:Attack(target)
+    elseif heroCanMove() then
+        moveToCursor()
+    end
+end
+ 
+function TimeToAttack()
+    return (GetTickCount() + GetLatency()/2 > lastAttack + lastAttackCD)
+end
+ 
+function heroCanMove()
+        return (GetTickCount() + GetLatency()/2 > lastAttack + lastWindUpTime + 20)
+end
+ 
+function moveToCursor()
+        if GetDistance(mousePos) then
+                local moveToPos = myHero + (Vector(mousePos) - myHero):normalized()*300
+                myHero:MoveTo(moveToPos.x, moveToPos.z)
+    end        
+end
+ 
+function OnAnimation(unit,animationName)
+    if unit.isMe and lastAnimation ~= animationName then lastAnimation = animationName end
+end
+--End Manciuszz orbwalker credit 
 
 
 -- Change skin function, made by Shalzuth
