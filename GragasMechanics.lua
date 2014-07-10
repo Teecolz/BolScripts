@@ -11,7 +11,7 @@
 if myHero.charName ~= "Gragas" then return end
 
 
-local version = 0.3
+local version = 0.4
 local AUTOUPDATE = true
 
 
@@ -90,27 +90,9 @@ function initComponents()
 	-- SOW Declare
 	Orbwalker = SOW(VP)
 
-	if VIP_USER then
-		require 'Prodiction'
-	    Prod = ProdictManager.GetInstance()
-	    ProdQ = Prod:AddProdictionObject(_Q, skills.skillQ.range, skills.skillQ.speed, skills.skillQ.delay, skills.skillQ.width) 
-	    ProdE = Prod:AddProdictionObject(_E, skills.skillE.range, skills.skillE.speed, skills.skillE.delay, skills.skillE.width)
-	    ProdictECol = Collision(_E, skills.skillE.range, skills.skillE.speed, skills.skillE.delay, skills.skillE.width)
-
-	    -- Put Callbacks On
-	    for i = 1, heroManager.iCount do
-			local hero = heroManager:GetHero(i)
-			if hero.team ~= myHero.team then
-				-- Spell Q --
-				ProdQ:GetPredictionAfterDash(hero, AfterDashFunc)
-				-- Spell E --
-				ProdE:GetPredictionOnDash(hero, OnDashFunc)
-       		end
-	    end
-	end
 	-- Target Selector
 	ts = TargetSelector(TARGET_NEAR_MOUSE, 900)
-	
+
 	Menu = scriptConfig("Gragas Mechanics by Mr Articuno", "GragasMA")
 	
 	Menu:addSubMenu("["..myHero.charName.." - Orbwalker]", "SOWorb")
@@ -182,6 +164,25 @@ function initComponents()
 	
 	if Menu.Ads.VIP.skin and VIP_USER then
 		GenModelPacket("Gragas", Menu.Ads.VIP.skin1)
+	end
+
+	if VIP_USER then
+		require 'Prodiction'
+	    Prod = ProdictManager.GetInstance()
+	    ProdQ = Prod:AddProdictionObject(_Q, skills.skillQ.range, skills.skillQ.speed, skills.skillQ.delay, skills.skillQ.width) 
+	    ProdE = Prod:AddProdictionObject(_E, skills.skillE.range, skills.skillE.speed, skills.skillE.delay, skills.skillE.width)
+	    --ProdictECol = Collision(_E, skills.skillE.range, skills.skillE.speed, skills.skillE.delay, skills.skillE.width)
+
+	    -- Put Callbacks On
+	    for i = 1, heroManager.iCount do
+			local hero = heroManager:GetHero(i)
+			if hero.team ~= myHero.team then
+				-- Spell Q --
+				ProdQ:GetPredictionAfterDash(hero, AfterDashFunc)
+				-- Spell E --
+				ProdE:GetPredictionOnDash(hero, OnDashFunc)
+       		end
+	    end
 	end
 	
 	PrintChat("<font color = \"#33CCCC\">Gragas Mechanics by</font> <font color = \"#fff8e7\">Mr Articuno</font>")
