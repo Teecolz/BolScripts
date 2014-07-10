@@ -477,7 +477,7 @@ function KSR()
 		rDmg = getDmg("R", enemy, myHero)
 		
 
-		if RREADY and enemy ~= nil and ValidTarget(enemy, Menu.RivenCombo.rSet.rRange) and enemy.health < rDmg and not enemy.bInvulnerable then
+		if RREADY and enemy ~= nil and ValidTarget(enemy, Menu.RivenCombo.rSet.rRange) and enemy.health < rDmg then
 			if myHero:GetSpellData(_R).name == 'RivenFengShuiEngine' then
 				CastSpell(_R)
 			end

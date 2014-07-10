@@ -35,6 +35,9 @@ local RequireI = Require("SourceLib")
 RequireI:Add("vPrediction", "https://raw.github.com/Hellsing/BoL/master/common/VPrediction.lua")
 RequireI:Add("SOW", "https://raw.github.com/Hellsing/BoL/master/common/SOW.lua")
 --RequireI:Add("mrLib", "https://raw.githubusercontent.com/gmlyra/BolScripts/master/common/mrLib.lua")
+if VIP_USER then
+	RequireI:Add("Prodiction", "https://bitbucket.org/Klokje/public-klokjes-bol-scripts/raw/ec830facccefb3b52212dba5696c08697c3c2854/Test/Prodiction/Prodiction.lua")	
+end
 
 RequireI:Check()
 
@@ -54,10 +57,10 @@ local qOff, wOff, eOff, rOff = 0,0,0,0
 local abilitySequence = {3, 1, 1, 2, 1, 4, 1, 3, 1, 3, 4, 3, 3, 2, 2, 4, 2, 2}
 local Ranges = { Q = 875, W = 1000, E = 425, R = 900000 , AA = 450}
 local skills = {
-  skillQ = {spellName = "Lay Waste", range = 975, speed = 2000, delay = .250, width = 200},
-  skillW = {spellName = "Wall of Pain", range = 1000, speed = 1600, delay = .250, width = 80},
-  skillE = {spellName = "Defile", range = 425, speed = 1600, delay = .250, width = 425},
-  skillR = {spellName = "Requiem", range = 900000, speed = 200, delay = .250, width = 400},
+  skillQ = {spellName = "Lay Waste", range = 875, speed = 1700, delay = .5, width = 200},
+  skillW = {spellName = "Wall of Pain", range = 1000, speed = 1600, delay = .5, width = 80},
+  skillE = {spellName = "Defile", range = 425, speed = 1000, delay = .5, width = 425},
+  skillR = {spellName = "Requiem", range = 900000, speed = 200, delay = 3.0, width = 400},
 }
 local AnimationCancel =
 {
@@ -87,6 +90,14 @@ function initComponents()
 	VP = VPrediction()
 	-- SOW Declare
 	Orbwalker = SOW(VP)
+
+	if VIP_USER then
+		require 'Prodiction'
+	    Prod = ProdictManager.GetInstance()
+	    ProdQ = Prod:AddProdictionObject(_Q, skills.skillQ.range, skills.skillQ.speed, skills.skillQ.delay, skills.skillQ.width) 
+	    ProdW = Prod:AddProdictionObject(_W, skills.skillW.range, skills.skillW.speed, skills.skillW.delay, skills.skillW.width)
+	end
+
 	-- Target Selector
 	ts = TargetSelector(TARGET_NEAR_MOUSE, 900)
 	
@@ -144,6 +155,7 @@ function initComponents()
 	Menu.Ads.KS:addParam("igniteRange", "Minimum range to cast Ignite", SCRIPT_PARAM_SLICE, 470, 0, 600, 0)
 	Menu.Ads:addSubMenu("VIP", "VIP")
 	Menu.Ads.VIP:addParam("spellCast", "Spell by Packet", SCRIPT_PARAM_ONOFF, true)
+	Menu.Ads.VIP:addParam("useProdiction", "Use Prodction", SCRIPT_PARAM_ONOFF, true)
 	Menu.Ads.VIP:addParam("skin", "Use custom skin (Requires Reload)", SCRIPT_PARAM_ONOFF, false)
 	Menu.Ads.VIP:addParam("skin1", "Skin changer", SCRIPT_PARAM_SLICE, 1, 1, 6)
 	
@@ -247,21 +259,35 @@ function Harass()
 		if Menu.Harass.useE and ValidTarget(target, skills.skillE.range) and EREADY and not eActive then
 			CastSpell(_E)
 		end
-		if WREADY and Menu.Harass.useW and ValidTarget(target, skills.skillW.range) then
-			local wPosition, wChance = VP:GetLineCastPosition(target, skills.skillW.delay, skills.skillW.width, skills.skillW.range, skills.skillW.speed, myHero, false)
-
-		    if wPosition ~= nil and wChance >= 2 then
-		      CastSpell(_W, wPosition.x, wPosition.z)
-		    end
+		
+		if VIP_USER and Menu.Ads.VIP.useProdiction then
+			if WREADY and Menu.Harass.useW and ValidTarget(target, skills.skillW.range) then
+				local pos, info = Prodiction.GetPrediction(target, skills.skillW.range, skills.skillW.speed, skills.skillW.delay, skills.skillW.width)
+				if pos then 
+					CastSpell(_W, pos.x, pos.z)
+				end
+			end
+			if QREADY and Menu.Harass.useQ and ValidTarget(target, skills.skillQ.range) then
+				local pos, info = Prodiction.GetPrediction(target, skills.skillQ.range, skills.skillQ.speed, skills.skillQ.delay, skills.skillQ.width)
+				if pos then 
+					CastSpell(_Q, pos.x, pos.z)
+				end
+			end
+		else
+			if WREADY and Menu.Harass.useW and ValidTarget(target, skills.skillW.range) then
+				local wPosition, wChance = VP:GetLineCastPosition(target, skills.skillW.delay, skills.skillW.width, skills.skillW.range, skills.skillW.speed, myHero, false)
+			    if wPosition ~= nil and wChance >= 2 then
+			      CastSpell(_W, wPosition.x, wPosition.z)
+			    end
+			end
+			if QREADY and Menu.Harass.useQ and ValidTarget(target, skills.skillQ.range) then
+				local qPosition, qChance = VP:GetCircularCastPosition(target, skills.skillQ.delay, skills.skillQ.width, skills.skillQ.range, skills.skillQ.speed, myHero, false)
+			    if qPosition ~= nil and qChance >= 2 then
+			      CastSpell(_Q, qPosition.x, qPosition.z)
+			    end
+			end
 		end
 
-		if QREADY and Menu.Harass.useQ and ValidTarget(target, skills.skillQ.range) then
-			local qPosition, qChance = VP:GetCircularCastPosition(target, skills.skillQ.delay, skills.skillQ.width, skills.skillQ.range, skills.skillQ.speed, myHero, false)
-
-		    if qPosition ~= nil and qChance >= 2 then
-		      CastSpell(_Q, qPosition.x, qPosition.z)
-		    end
-		end
 	end
 	
 end
@@ -285,22 +311,39 @@ end
 
 function AllInCombo(target, typeCombo)
 	if target ~= nil and typeCombo == 0 then
-		KSR()
+
 		if Menu.KarthusCombo.eSet.useE and ValidTarget(target, skills.skillE.range) and EREADY and not eActive then
 			CastSpell(_E)
 		end
-		if WREADY and Menu.KarthusCombo.wSet.useW and ValidTarget(target, skills.skillW.range) then
-			local wPosition, wChance = VP:GetLineCastPosition(target, skills.skillW.delay, skills.skillW.width, skills.skillW.range, skills.skillW.speed, myHero, false)
-		    if wPosition ~= nil and wChance >= 2 then
-		      CastSpell(_W, wPosition.x, wPosition.z)
-		    end
+
+		if VIP_USER and Menu.Ads.VIP.useProdiction then
+			if WREADY and Menu.KarthusCombo.wSet.useW and ValidTarget(target, skills.skillW.range) then
+				local pos, info = Prodiction.GetPrediction(target, skills.skillW.range, skills.skillW.speed, skills.skillW.delay, skills.skillW.width)
+				if pos then 
+					CastSpell(_W, pos.x, pos.z)
+				end
+			end
+			if QREADY and Menu.KarthusCombo.qSet.useQ and ValidTarget(target, skills.skillQ.range) then
+				local pos, info = Prodiction.GetPrediction(target, skills.skillQ.range, skills.skillQ.speed, skills.skillQ.delay, skills.skillQ.width)
+				if pos then 
+					CastSpell(_Q, pos.x, pos.z)
+				end
+			end
+		else
+			if WREADY and Menu.KarthusCombo.wSet.useW and ValidTarget(target, skills.skillW.range) then
+				local wPosition, wChance = VP:GetLineCastPosition(target, skills.skillW.delay, skills.skillW.width, skills.skillW.range, skills.skillW.speed, myHero, false)
+			    if wPosition ~= nil and wChance >= 2 then
+			      CastSpell(_W, wPosition.x, wPosition.z)
+			    end
+			end
+			if QREADY and Menu.KarthusCombo.qSet.useQ and ValidTarget(target, skills.skillQ.range) then
+				local qPosition, qChance = VP:GetCircularCastPosition(target, skills.skillQ.delay, skills.skillQ.width, skills.skillQ.range, skills.skillQ.speed, myHero, false)
+			    if qPosition ~= nil and qChance >= 2 then
+			      CastSpell(_Q, qPosition.x, qPosition.z)
+			    end
+			end
 		end
-		if QREADY and Menu.KarthusCombo.qSet.useQ and ValidTarget(target, skills.skillQ.range) then
-			local qPosition, qChance = VP:GetCircularCastPosition(target, skills.skillQ.delay, skills.skillQ.width, skills.skillQ.range, skills.skillQ.speed, myHero, false)
-		    if qPosition ~= nil and qChance >= 2 then
-		      CastSpell(_Q, qPosition.x, qPosition.z)
-		    end
-		end
+
 	end
 end
 
@@ -371,12 +414,12 @@ function KSR()
 	for i, enemy in ipairs(GetEnemyHeroes()) do
 		rDmg = getDmg("R", enemy, myHero)
 
-		if RREADY and enemy ~= nil and enemy.health < rDmg then
+		if enemy ~= nil and enemy.health < rDmg then
 			numberKillable = numberKillable + 1
 		end
 	end
 
-	if numberKillable >= Menu.Ads.rSet.nEnemy and Menu.Ads.rSet.useR then
+	if enemy ~= nil and numberKillable >= Menu.Ads.rSet.nEnemy and Menu.Ads.rSet.useR then
 		CastSpell(_R)
 	end
 end

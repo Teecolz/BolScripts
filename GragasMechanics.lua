@@ -11,7 +11,7 @@
 if myHero.charName ~= "Gragas" then return end
 
 
-local version = 0.2
+local version = 0.3
 local AUTOUPDATE = true
 
 
@@ -91,8 +91,7 @@ function initComponents()
 	Orbwalker = SOW(VP)
 
 	if VIP_USER then
-		require "Prodiction"
-		require "Collision"
+		require 'Prodiction'
 	    Prod = ProdictManager.GetInstance()
 	    ProdQ = Prod:AddProdictionObject(_Q, skills.skillQ.range, skills.skillQ.speed, skills.skillQ.delay, skills.skillQ.width) 
 	    ProdE = Prod:AddProdictionObject(_E, skills.skillE.range, skills.skillE.speed, skills.skillE.delay, skills.skillE.width)
@@ -103,19 +102,12 @@ function initComponents()
 			local hero = heroManager:GetHero(i)
 			if hero.team ~= myHero.team then
 				-- Spell Q --
-				ProdQ:GetPredictionOnDash(hero, OnDashFunc)
 				ProdQ:GetPredictionAfterDash(hero, AfterDashFunc)
-				ProdQ:GetPredictionAfterImmobile(hero, AfterImmobileFunc)
-				ProdQ:GetPredictionOnImmobile(hero, OnImmobileFunc)
 				-- Spell E --
 				ProdE:GetPredictionOnDash(hero, OnDashFunc)
-				ProdE:GetPredictionAfterDash(hero, AfterDashFunc)
-				ProdE:GetPredictionAfterImmobile(hero, AfterImmobileFunc)
-				ProdE:GetPredictionOnImmobile(hero, OnImmobileFunc)
        		end
 	    end
 	end
-
 	-- Target Selector
 	ts = TargetSelector(TARGET_NEAR_MOUSE, 900)
 	
@@ -274,17 +266,43 @@ end
 -- Harass --
 
 function Harass()
-	local enemy = ts.target
+	local target = ts.target
 	
-	if enemy ~= nil and ValidTarget(enemy) then
-		if Menu.Harass.useW and ValidTarget(target, Ranges.E + Ranges.AA) and WREADY then
+	if target ~= nil and ValidTarget(target) then
+		if VIP_USER then
+			if Menu.Harass.useE and ValidTarget(target, Ranges.E) and EREADY then
+				local pos, info = Prod.GetPrediction(target, skills.skillE.range, skills.skillE.speed, skills.skillE.delay, skills.skillE.width)
+				if pos then 
+					CastSpell(_E, pos.x, pos.z)
+				end
+			end
+
+			if Menu.Harass.useQ and ValidTarget(target, Ranges.Q) and QREADY then
+				local pos, info = Prod.GetPrediction(target, skills.skillQ.range, skills.skillQ.speed, skills.skillQ.delay, skills.skillQ.width)
+				if pos then 
+					CastSpell(_Q, pos.x, pos.z)
+				end
+			end
+		else
+			if QREADY and Menu.Harass.useQ and ValidTarget(target, Ranges.Q) then
+				local qPosition, qChance = VP:GetLineCastPosition(target, skills.skillQ.delay, skills.skillQ.width, skills.skillQ.range, skills.skillQ.speed, myHero, false)
+
+			    if qPosition ~= nil and GetDistance(qPosition) < skills.skillQ.range and qChance >= 2 then
+			      CastSpell(_Q, qPosition.x, qPosition.z)
+			    end
+			end
+
+			if Menu.Harass.useE and ValidTarget(target, Ranges.E) and EREADY then
+				local ePosition, eChance = VP:GetLineCastPosition(target, skills.skillQ.delay, skills.skillQ.width, skills.skillQ.range, skills.skillQ.speed, myHero, true)
+
+			    if ePosition ~= nil and GetDistance(ePosition) < skills.skillE.range and eChance >= 2 then
+			      CastSpell(_E, ePosition.x, ePosition.z)
+			    end
+			end
+		end
+
+		if WREADY and Menu.Harass.useW and ValidTarget(target, Ranges.AA) then
 			CastSpell(_W)
-		end
-		if Menu.Harass.useE and ValidTarget(target, Ranges.E + Ranges.AA) and EREADY then
-			CastSpell(_E, target)
-		end
-		if QREADY and Menu.Harass.useQ and ValidTarget(target, Ranges.Q) then
-			CastSpell(_Q, target)
 		end
 	end
 	
@@ -316,17 +334,15 @@ function AllInCombo(target, typeCombo)
 			end
 
 			if Menu.GragasCombo.eSet.useE and ValidTarget(target, Ranges.E) and EREADY then
-				local pos, info = Prodiction.GetPrediction(target, skills.skillE.range, skills.skillE.speed, skills.skillE.delay, skills.skillE.width)
-
-				if pos then
+				local pos, info = Prod.GetPrediction(target, skills.skillE.range, skills.skillE.speed, skills.skillE.delay, skills.skillE.width)
+				if pos then 
 					CastSpell(_E, pos.x, pos.z)
 				end
 			end
 
 			if Menu.GragasCombo.qSet.useQ and ValidTarget(target, Ranges.Q) and QREADY then
-				local pos, info = Prodiction.GetPrediction(target, skills.skillQ.range, skills.skillQ.speed, skills.skillQ.delay, skills.skillQ.width)
-
-				if pos then
+				local pos, info = Prod.GetPrediction(target, skills.skillQ.range, skills.skillQ.speed, skills.skillQ.delay, skills.skillQ.width)
+				if pos then 
 					CastSpell(_Q, pos.x, pos.z)
 				end
 			end
@@ -363,30 +379,30 @@ end
 
 
 function LaneClear()
-	for i, enemyMinion in pairs(enemyMinions.objects) do
+	for i, target in pairs(enemyMinions.objects) do
 		if Menu.Laneclear.useClearW and WREADY then
 			CastSpell(_W)
 		end
-		if enemyMinion ~= nil and ValidTarget(enemyMinion, Ranges.Q) and Menu.Laneclear.useClearQ and QREADY then
-			CastSpell(_Q, enemyMinion)
+		if target ~= nil and ValidTarget(target, Ranges.Q) and Menu.Laneclear.useClearQ and QREADY then
+			CastSpell(_Q, target)
 		end
 		if Menu.Laneclear.useClearE and EREADY then
-			CastSpell(_E, enemyMinion)
+			CastSpell(_E, target)
 		end
 	end
 end
 
 function JungleClear()
-	for i, jungleMinion in pairs(jungleMinions.objects) do
-		if jungleMinion ~= nil then
+	for i, target in pairs(jungleMinions.objects) do
+		if target ~= nil then
 			if Menu.Jungleclear.useClearW and WREADY then
 				CastSpell(_W)
 			end
 			if Menu.Jungleclear.useClearE and EREADY then
-				CastSpell(_E, jungleMinion)
+				CastSpell(_E, target)
 			end
 			if Menu.Jungleclear.useClearQ and QREADY then
-				CastSpell(_Q, jungleMinion)
+				CastSpell(_Q, target)
 			end
 		end
 	end
@@ -421,7 +437,7 @@ function KSR()
 	for i, enemy in ipairs(GetEnemyHeroes()) do
 		rDmg = getDmg("R", enemy, myHero)
 
-		if RREADY and enemy ~= nil and ValidTarget(enemy, Ranges.R) and enemy.health < rDmg and not enemy.bInvulnerable then
+		if RREADY and enemy ~= nil and ValidTarget(enemy, Ranges.R) and enemy.health < rDmg then
 			CastSpell(_R, enemy)
 		end
 	end
