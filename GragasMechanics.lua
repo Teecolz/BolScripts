@@ -142,7 +142,7 @@ function initComponents()
 	Menu.Ads.KS:addParam("ignite", "Use Ignite", SCRIPT_PARAM_ONOFF, false)
 	Menu.Ads.KS:addParam("igniteRange", "Minimum range to cast Ignite", SCRIPT_PARAM_SLICE, 470, 0, 600, 0)
 	Menu.Ads:addSubMenu("VIP", "VIP")
-	Menu.Ads.VIP:addParam("spellCast", "Spell by Packet", SCRIPT_PARAM_ONOFF, true)
+	Menu.Ads.VIP:addParam("useProdiction", "Use Prodction", SCRIPT_PARAM_ONOFF, true)
 	Menu.Ads.VIP:addParam("skin", "Use custom skin (Requires Reload)", SCRIPT_PARAM_ONOFF, false)
 	Menu.Ads.VIP:addParam("skin1", "Skin changer", SCRIPT_PARAM_SLICE, 1, 1, 7)
 	
@@ -268,18 +268,17 @@ end
 
 function Harass()
 	local target = ts.target
-	
 	if target ~= nil and ValidTarget(target) then
-		if VIP_USER then
+		if VIP_USER and Menu.Ads.VIP.useProdiction then
 			if Menu.Harass.useE and ValidTarget(target, Ranges.E) and EREADY then
-				local pos, info = Prod.GetPrediction(target, skills.skillE.range, skills.skillE.speed, skills.skillE.delay, skills.skillE.width)
+				local pos, info = Prodiction.GetPrediction(target, skills.skillE.range, skills.skillE.speed, skills.skillE.delay, skills.skillE.width)
 				if pos then 
 					CastSpell(_E, pos.x, pos.z)
 				end
 			end
 
 			if Menu.Harass.useQ and ValidTarget(target, Ranges.Q) and QREADY then
-				local pos, info = Prod.GetPrediction(target, skills.skillQ.range, skills.skillQ.speed, skills.skillQ.delay, skills.skillQ.width)
+				local pos, info = Prodiction.GetPrediction(target, skills.skillQ.range, skills.skillQ.speed, skills.skillQ.delay, skills.skillQ.width)
 				if pos then 
 					CastSpell(_Q, pos.x, pos.z)
 				end
@@ -301,12 +300,10 @@ function Harass()
 			    end
 			end
 		end
-
 		if WREADY and Menu.Harass.useW and ValidTarget(target, Ranges.AA) then
 			CastSpell(_W)
 		end
 	end
-	
 end
 
 -- End Harass --
@@ -329,20 +326,20 @@ end
 function AllInCombo(target, typeCombo)
 	if target ~= nil and typeCombo == 0 then
 
-		if VIP_USER then
+		if VIP_USER and Menu.Ads.VIP.useProdiction then
 			if RREADY and Menu.GragasCombo.rSet.useR and ValidTarget(target, Ranges.R - 100) then
 				smartUltimate(target)
 			end
 
 			if Menu.GragasCombo.eSet.useE and ValidTarget(target, Ranges.E) and EREADY then
-				local pos, info = Prod.GetPrediction(target, skills.skillE.range, skills.skillE.speed, skills.skillE.delay, skills.skillE.width)
+				local pos, info = Prodiction.GetPrediction(target, skills.skillE.range, skills.skillE.speed, skills.skillE.delay, skills.skillE.width)
 				if pos then 
 					CastSpell(_E, pos.x, pos.z)
 				end
 			end
 
 			if Menu.GragasCombo.qSet.useQ and ValidTarget(target, Ranges.Q) and QREADY then
-				local pos, info = Prod.GetPrediction(target, skills.skillQ.range, skills.skillQ.speed, skills.skillQ.delay, skills.skillQ.width)
+				local pos, info = Prodiction.GetPrediction(target, skills.skillQ.range, skills.skillQ.speed, skills.skillQ.delay, skills.skillQ.width)
 				if pos then 
 					CastSpell(_Q, pos.x, pos.z)
 				end
