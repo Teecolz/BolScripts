@@ -12,7 +12,7 @@
 if myHero.charName ~= "Riven" then return end
 
 
-local version = 0.82
+local version = 0.83
 local AUTOUPDATE = true
 
 
@@ -29,7 +29,7 @@ end
 if DOWNLOADING_SOURCELIB then print("Downloading required libraries, please wait...") return end
 
 if AUTOUPDATE then
-	SourceUpdater(SCRIPT_NAME, version, "raw.github.com", "/gmlyra/BolScripts/master/"..SCRIPT_NAME..".lua", SCRIPT_PATH .. GetCurrentEnv().FILE_NAME, "/gmlyra/BolScripts/VersionFiles/master/"..SCRIPT_NAME..".version"):CheckUpdate()
+	SourceUpdater(SCRIPT_NAME, version, "raw.github.com", "/gmlyra/BolScripts/master/"..SCRIPT_NAME..".lua", SCRIPT_PATH .. GetCurrentEnv().FILE_NAME, "/gmlyra/BolScripts/master/VersionFiles/"..SCRIPT_NAME..".version"):CheckUpdate()
 end
 
 local RequireI = Require("SourceLib")
@@ -331,8 +331,6 @@ function AllInCombo(target, typeCombo)
 				if not swing then
 					CastSpell(_Q, target.x, target.z)
 					swing = true
-				else
-					Orbwalker:Attack(target)
 				end
 			end
 		end
@@ -403,8 +401,6 @@ function LaneClear()
 				if not swing then
 					CastSpell(_Q, target.x, target.z)
 					swing = true
-				else
-					Orbwalker:Attack(target)
 				end
 			end
 		end
@@ -432,8 +428,6 @@ function JungleClear()
 					if not swing then
 						CastSpell(_Q, target.x, target.z)
 						swing = true
-					else
-						Orbwalker:Attack(target)
 					end
 				end
 			end
