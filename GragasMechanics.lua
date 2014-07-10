@@ -11,7 +11,7 @@
 if myHero.charName ~= "Gragas" then return end
 
 
-local version = 0.4
+local version = 0.41
 local AUTOUPDATE = true
 
 
@@ -110,7 +110,7 @@ function initComponents()
 	Menu.GragasCombo.rSet:addParam("useR", "Use Smart Ultimate", SCRIPT_PARAM_ONOFF, true)
 	
 	Menu:addSubMenu("["..myHero.charName.." - Harass]", "Harass")
-	Menu.Harass:addParam("harass", "Harass", SCRIPT_PARAM_ONKEYDOWN, false, string.byte("G"))
+	Menu.Harass:addParam("harass", "Harass", SCRIPT_PARAM_ONOFF, true, string.byte("G"))
 	Menu.Harass:addParam("useQ", "Use Q in Harass", SCRIPT_PARAM_ONOFF, true)
 	Menu.Harass:addParam("useW", "Use W in Harass", SCRIPT_PARAM_ONOFF, true)
 	Menu.Harass:addParam("useE", "Use E in Harass", SCRIPT_PARAM_ONOFF, true)
