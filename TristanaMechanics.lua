@@ -51,12 +51,12 @@ local VP = nil
 local qMode = false
 local qOff, wOff, eOff, rOff = 0,0,0,0
 local abilitySequence = {3, 2, 3, 1, 3, 4, 1, 1, 1, 1, 4, 2, 2, 2, 2, 4, 3, 3}
-local Ranges = { AA = 525 }
+local Ranges = { AA = 550 }
 local skills = {
-    SkillQ = { ready = false, name = myHero:GetSpellData(_Q).name, range = myHero:GetSpellData(_Q).range, delay = myHero:GetSpellData(_Q).delayTotalTimePercent, speed = myHero:GetSpellData(_Q).missileSpeed, width = myHero:GetSpellData(_Q).lineWidth },
+    SkillQ = { ready = false, name = myHero:GetSpellData(_Q).name, range = Ranges.AA, delay = myHero:GetSpellData(_Q).delayTotalTimePercent, speed = myHero:GetSpellData(_Q).missileSpeed, width = myHero:GetSpellData(_Q).lineWidth },
 	SkillW = { ready = false, name = myHero:GetSpellData(_W).name, range = myHero:GetSpellData(_W).range, delay = myHero:GetSpellData(_W).delayTotalTimePercent, speed = myHero:GetSpellData(_W).missileSpeed, width = myHero:GetSpellData(_W).lineWidth },
-	SkillE = { ready = false, name = myHero:GetSpellData(_E).name, range = myHero:GetSpellData(_E).range, delay = myHero:GetSpellData(_E).delayTotalTimePercent, speed = myHero:GetSpellData(_E).missileSpeed, width = myHero:GetSpellData(_E).lineWidth },
-	SkillR = { ready = false, name = myHero:GetSpellData(_R).name, range = myHero:GetSpellData(_R).range, delay = myHero:GetSpellData(_R).delayTotalTimePercent, speed = myHero:GetSpellData(_R).missileSpeed, width = myHero:GetSpellData(_R).lineWidth },
+	SkillE = { ready = false, name = myHero:GetSpellData(_E).name, range = Ranges.AA, delay = myHero:GetSpellData(_E).delayTotalTimePercent, speed = myHero:GetSpellData(_E).missileSpeed, width = myHero:GetSpellData(_E).lineWidth },
+	SkillR = { ready = false, name = myHero:GetSpellData(_R).name, range = Ranges.AA, delay = myHero:GetSpellData(_R).delayTotalTimePercent, speed = myHero:GetSpellData(_R).missileSpeed, width = myHero:GetSpellData(_R).lineWidth },
 }
 local AnimationCancel =
 {
@@ -70,13 +70,16 @@ local AnimationCancel =
 
 
 --[[ Slots Itens ]]--
-local tiamatSlot, hydraSlot, youmuuSlot, bilgeSlot, bladeSlot, dfgSlot = nil, nil, nil, nil, nil, nil
-local tiamatReady, hydraReady, youmuuReady, bilgeReady, bladeReady, dfgReady = nil, nil, nil, nil, nil, nil
+local tiamatSlot, hydraSlot, youmuuSlot, bilgeSlot, bladeSlot, dfgSlot, divineSlot = nil, nil, nil, nil, nil, nil, nil
+local tiamatReady, hydraReady, youmuuReady, bilgeReady, bladeReady, dfgReady, divineReady = nil, nil, nil, nil, nil, nil, nil
 
 --[[Auto Attacks]]--
 local lastBasicAttack = 0
 local swingDelay = 0.25
 local swing = false
+
+--[[Misc]]--
+local lastSkin = 0
 
 function OnLoad()
 	initComponents()
@@ -153,6 +156,7 @@ function initComponents()
 	
 	if Menu.Ads.VIP.skin and VIP_USER then
 		GenModelPacket("Tristana", Menu.Ads.VIP.skin1)
+		lastSkin = Menu.Ads.VIP.skin1
 	end
 	
 	PrintChat("<font color = \"#33CCCC\">Tristana Mechanics by</font> <font color = \"#fff8e7\">Mr Articuno</font>")
@@ -165,6 +169,11 @@ function OnTick()
 	jungleMinions:update()
 	CDHandler()
 	KillSteal()
+
+	if Menu.Ads.VIP.skin and VIP_USER and skinChanged() then
+		GenModelPacket("Tristana", Menu.Ads.VIP.skin1)
+		lastSkin = Menu.Ads.VIP.skin1
+	end
 
 	if Menu.Ads.autoLevel then
 		AutoLevel()
@@ -202,6 +211,7 @@ function CDHandler()
 	bilgeSlot = GetInventorySlotItem(3144)
 	bladeSlot = GetInventorySlotItem(3153)
 	dfgSlot = GetInventorySlotItem(3128)
+	divineSlot = GetInventorySlotItem(3131)
 	
 	tiamatReady = (tiamatSlot ~= nil and myHero:CanUseSpell(tiamatSlot) == READY)
 	hydraReady = (hydraSlot ~= nil and myHero:CanUseSpell(hydraSlot) == READY)
@@ -209,6 +219,9 @@ function CDHandler()
 	bilgeReady = (bilgeSlot ~= nil and myHero:CanUseSpell(bilgeSlot) == READY)
 	bladeReady = (bladeSlot ~= nil and myHero:CanUseSpell(bladeSlot) == READY)
 	dfgReady = (dfgSlot ~= nil and myHero:CanUseSpell(dfgSlot) == READY)
+	divineReady = (divineSlot ~= nil and myHero:CanUseSpell(divineSlot) == READY)
+
+	Ranges.AA = 550 + (myHero.level * 8.5)
 
 	-- Summoners
 	if myHero:GetSpellData(SUMMONER_1).name:find("SummonerDot") then
@@ -258,17 +271,17 @@ function AllInCombo(target, typeCombo)
 		if skills.SkillR.ready and Menu.TristanaCombo.rSet.useR and ValidTarget(target, skills.SkillR.range) then
 			rDmg = getDmg("R", target, myHero)
 
-			if skills.SkillR.ready and target ~= nil and ValidTarget(target, skills.SkillR.range) and target.health < rDmg then
+			if skills.SkillR.ready and target ~= nil and ValidTarget(target, 645) and target.health < rDmg then
 				CastSpell(_R, target)
 			end
 		end
-
-		if Menu.TristanaCombo.eSet.useE and ValidTarget(target, skills.SkillE.range) and skills.SkillE.ready then
+		if Menu.TristanaCombo.eSet.useE and ValidTarget(target, Ranges.AA) and skills.SkillE.ready then
 			CastSpell(_E, target)
 		end
 
-		if Menu.TristanaCombo.qSet.useQ and ValidTarget(target, skills.SkillQ.range) and skills.SkillQ.ready then
+		if Menu.TristanaCombo.qSet.useQ and ValidTarget(target, Ranges.AA) and skills.SkillQ.ready then
 			CastSpell(_Q)
+			ItemUsage(target)
 		end
 
 		if Menu.TristanaCombo.wSet.useW and ValidTarget(target, skills.SkillW.range) and skills.SkillW.ready then
@@ -297,7 +310,7 @@ function LaneClear()
 			if Menu.Laneclear.useClearW and skills.SkillW.ready and ValidTarget(targetMinion, skills.SkillW.range) then
 				CastSpell(_W, targetMinion)
 			end
-			if Menu.Laneclear.useClearE and skills.SkillE.ready and ValidTarget(targetMinion, skills.SkillE.range) then
+			if Menu.Laneclear.useClearE and skills.SkillE.ready and ValidTarget(targetMinion, Ranges.AA) then
 				CastSpell(_E, targetMinion)
 			end
 		end
@@ -308,14 +321,14 @@ end
 function JungleClear()
 	for i, jungleMinion in pairs(jungleMinions.objects) do
 		if jungleMinion ~= nil then
-			if Menu.Jungleclear.useClearQ and skills.SkillQ.ready and ValidTarget(targetMinion, Ranges.AA) then
+			if Menu.Jungleclear.useClearQ and skills.SkillQ.ready and ValidTarget(jungleMinion, Ranges.AA) then
 				CastSpell(_Q)
 			end
-			if Menu.Jungleclear.useClearW and skills.SkillW.ready and ValidTarget(targetMinion, skills.SkillW.range) then
-				CastSpell(_W, targetMinion)
+			if Menu.Jungleclear.useClearW and skills.SkillW.ready and ValidTarget(jungleMinion, skills.SkillW.range) then
+				CastSpell(_W, jungleMinion)
 			end
-			if Menu.Jungleclear.useClearE and skills.SkillE.ready and ValidTarget(targetMinion, skills.SkillE.range) then
-				CastSpell(_E, targetMinion)
+			if Menu.Jungleclear.useClearE and skills.SkillE.ready and ValidTarget(jungleMinion, Ranges.AA) then
+				CastSpell(_E, jungleMinion)
 			end
 
 			if jungleMinion.name == "Dragon6.1.1" or jungleMinion.name == "Worm12.1.1" then
@@ -358,9 +371,9 @@ function KSR()
 	for i, target in ipairs(GetEnemyHeroes()) do
 		rDmg = getDmg("R", target, myHero)
 
-		if skills.SkillR.ready and target ~= nil and ValidTarget(target, skills.SkillR.range) and target.health < rDmg then
+		if skills.SkillR.ready and target ~= nil and ValidTarget(target, 645) and target.health < rDmg then
 			CastSpell(_R, target)
-		elseif skills.SkillR.ready and skills.SkillW.ready and target ~= nil and ValidTarget(target, skills.SkillR.range + skills.SkillW.range) and target.health < rDmg then
+		elseif skills.SkillR.ready and skills.SkillW.ready and target ~= nil and ValidTarget(target, 645 + skills.SkillW.range) and target.health < rDmg then
 			CastSpell(_W, target.x, target.z)
 			CastSpell(_R, target)
 		end
@@ -405,6 +418,7 @@ function ItemUsage(target)
 	if youmuuReady then CastSpell(youmuuSlot, target) end
 	if bilgeReady then CastSpell(bilgeSlot, target) end
 	if bladeReady then CastSpell(bladeSlot, target) end
+	if divineReady then CastSpell(divineSlot, target) end
 
 end
 
@@ -431,6 +445,10 @@ function GenModelPacket(champ, skinId)
 	end
 	p:Hide()
 	RecvPacket(p)
+end
+
+function skinChanged()
+	return Menu.Ads.VIP.skin1 ~= lastSkin
 end
 
 function OnDraw()
