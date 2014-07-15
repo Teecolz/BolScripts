@@ -11,7 +11,7 @@
 if myHero.charName ~= "Tristana" then return end
 
 
-local version = 0.3
+local version = 0.4
 local AUTOUPDATE = true
 
 
@@ -123,7 +123,8 @@ function initComponents()
 	Menu.TristanaCombo:addSubMenu("Q Settings", "qSet")
 	Menu.TristanaCombo.qSet:addParam("useQ", "Use Q in combo", SCRIPT_PARAM_ONOFF, true)
 	Menu.TristanaCombo:addSubMenu("W Settings", "wSet")
-	Menu.TristanaCombo.wSet:addParam("useW", "Use W in combo", SCRIPT_PARAM_ONOFF, true)
+	Menu.TristanaCombo.wSet:addParam("useW", "Use W", SCRIPT_PARAM_ONOFF, true)
+	Menu.TristanaCombo.wSet:addParam("wAp", "AP Tristana", SCRIPT_PARAM_ONOFF, false)
 	Menu.TristanaCombo:addSubMenu("E Settings", "eSet")
 	Menu.TristanaCombo.eSet:addParam("useE", "Use E in combo", SCRIPT_PARAM_ONOFF, true)
 	Menu.TristanaCombo:addSubMenu("R Settings", "rSet")
@@ -286,6 +287,7 @@ end
 
 function AllInCombo(target, typeCombo)
 	if target ~= nil and typeCombo == 0 then
+		ItemUsage(target)
 		if skills.SkillR.ready and Menu.TristanaCombo.rSet.useR and ValidTarget(target, skills.SkillR.range) then
 			rDmg = getDmg("R", target, myHero)
 
@@ -299,18 +301,24 @@ function AllInCombo(target, typeCombo)
 
 		if Menu.TristanaCombo.qSet.useQ and ValidTarget(target, Ranges.AA) and skills.SkillQ.ready then
 			CastSpell(_Q)
-			ItemUsage(target)
 		end
 
 		if Menu.TristanaCombo.wSet.useW and ValidTarget(target, skills.SkillW.range) and skills.SkillW.ready then
-			wDmg = getDmg("W", target, myHero)
-
-			if skills.SkillW.ready and target ~= nil and ValidTarget(target, skills.SkillW.range) and target.health < wDmg then
+			if Menu.TristanaCombo.wSet.wAp then
 				local wPosition, wChance = VP:GetCircularCastPosition(target, skills.SkillW.delay, skills.SkillW.width, skills.SkillW.range, skills.SkillW.speed, myHero, true)
 
 			    if wPosition ~= nil and GetDistance(wPosition) < skills.SkillW.range and wChance >= 2 then
 			      CastSpell(_W, wPosition.x, wPosition.z)
 			    end
+			else
+				wDmg = getDmg("W", target, myHero)
+				if skills.SkillW.ready and target ~= nil and ValidTarget(target, skills.SkillW.range) and target.health < wDmg then
+					local wPosition, wChance = VP:GetCircularCastPosition(target, skills.SkillW.delay, skills.SkillW.width, skills.SkillW.range, skills.SkillW.speed, myHero, true)
+
+				    if wPosition ~= nil and GetDistance(wPosition) < skills.SkillW.range and wChance >= 2 then
+				      CastSpell(_W, wPosition.x, wPosition.z)
+				    end
+				end
 			end
 		end
 	end
