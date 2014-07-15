@@ -11,7 +11,7 @@
 if myHero.charName ~= "Tristana" then return end
 
 
-local version = 0.2
+local version = 0.3
 local AUTOUPDATE = true
 
 
@@ -80,6 +80,17 @@ local swing = false
 
 --[[Misc]]--
 local lastSkin = 0
+local isSAC = false
+local isMMA = false
+local target = nil
+
+--Credit Trees
+function GetCustomTarget()
+	ts:update()
+	if _G.MMA_Target and _G.MMA_Target.type == myHero.type then return _G.MMA_Target end
+	if _G.AutoCarry and _G.AutoCarry.Crosshair and _G.AutoCarry.Attack_Crosshair and _G.AutoCarry.Attack_Crosshair.target and _G.AutoCarry.Attack_Crosshair.target.type == myHero.type then return _G.AutoCarry.Attack_Crosshair.target end
+	return ts.target
+end
 
 function OnLoad()
 	initComponents()
@@ -94,9 +105,18 @@ function initComponents()
 	ts = TargetSelector(TARGET_LESS_CAST_PRIORITY, 900)
 	
 	Menu = scriptConfig("Tristana Mechanics by Mr Articuno", "TristanaMA")
-	
-	Menu:addSubMenu("["..myHero.charName.." - Orbwalker]", "SOWorb")
-	Orbwalker:LoadToMenu(Menu.SOWorb)
+
+	if _G.MMA_Target ~= nil then
+		PrintChat("<font color = \"#33CCCC\">MMA Status:</font> <font color = \"#fff8e7\"> Loaded</font>")
+		isMMA = true
+	elseif _G.AutoCarry ~= nil then
+		PrintChat("<font color = \"#33CCCC\">SAC Status:</font> <font color = \"#fff8e7\"> Loaded</font>")
+		isSAC = true
+	else
+		PrintChat("<font color = \"#33CCCC\">OrbWalker not found:</font> <font color = \"#fff8e7\"> Loading SOW</font>")
+		Menu:addSubMenu("["..myHero.charName.." - Orbwalker]", "SOWorb")
+		Orbwalker:LoadToMenu(Menu.SOWorb)
+	end
 	
 	Menu:addSubMenu("["..myHero.charName.." - Combo]", "TristanaCombo")
 	Menu.TristanaCombo:addParam("combo", "Combo mode", SCRIPT_PARAM_ONKEYDOWN, false, 32)
@@ -163,7 +183,7 @@ function initComponents()
 end
 
 function OnTick()
-	ts:update()
+	target = GetCustomTarget()
 	targetMinions:update()
 	allyMinions:update()
 	jungleMinions:update()
@@ -234,9 +254,7 @@ end
 
 -- Harass --
 
-function Harass()
-	local target = ts.target
-	
+function Harass()	
 	if target ~= nil and ValidTarget(target) then
 		if Menu.Harass.useE and ValidTarget(target, skills.SkillE.range) and skills.SkillE.ready then
 			CastSpell(_E, target)
@@ -256,8 +274,8 @@ end
 
 function Combo()
 	local typeCombo = 0
-	if ts.target ~= nil then
-		AllInCombo(ts.target, 0)
+	if target ~= nil then
+		AllInCombo(target, 0)
 	end
 	
 end
