@@ -127,9 +127,6 @@ function initComponents()
 	Menu:addSubMenu("["..myHero.charName.." - Additionals]", "Ads")
 	Menu.Ads:addParam("cancel", "Animation Cancel", SCRIPT_PARAM_LIST, 1, { "Move","Laugh","Dance","Taunt","joke","Nothing" })
 	AddProcessSpellCallback(function(unit, spell)
-		if unit.isMe then
-            print(spell.name)
-        end
 	end)
 	Menu.Ads:addParam("autoLevel", "Auto-Level Spells", SCRIPT_PARAM_ONOFF, false)
 	Menu.Ads:addSubMenu("Killsteal", "KS")
