@@ -106,7 +106,7 @@ function initComponents()
 	
 	Menu = scriptConfig("Tristana Mechanics by Mr Articuno", "TristanaMA")
 
-	if _G.MMA_Target ~= nil then
+	if _G.MMA_Loaded ~= nil then
 		PrintChat("<font color = \"#33CCCC\">MMA Status:</font> <font color = \"#fff8e7\"> Loaded</font>")
 		isMMA = true
 	elseif _G.AutoCarry ~= nil then
@@ -150,6 +150,9 @@ function initComponents()
 	
 	Menu:addSubMenu("["..myHero.charName.." - Additionals]", "Ads")
 	Menu.Ads:addParam("cancel", "Animation Cancel", SCRIPT_PARAM_LIST, 1, { "Move","Laugh","Dance","Taunt","joke","Nothing" })
+	AddProcessSpellCallback(function(unit, spell)
+		animationCancel(unit,spell)
+	end)
 	Menu.Ads:addParam("autoLevel", "Auto-Level Spells", SCRIPT_PARAM_ONOFF, false)
 	Menu.Ads:addSubMenu("Killsteal", "KS")
 	Menu.Ads.KS:addParam("useR", "Use R", SCRIPT_PARAM_ONOFF, true)
@@ -446,6 +449,14 @@ function ItemUsage(target)
 	if bladeReady then CastSpell(bladeSlot, target) end
 	if divineReady then CastSpell(divineSlot, target) end
 
+end
+
+function animationCancel(unit, spell)
+	if not unit.isMe then return end
+
+	if spell.name == 'BusterShot' then -- _R
+		AnimationCancel[Menu.Ads.cancel]()
+	end
 end
 
 -- Change skin function, made by Shalzuth
