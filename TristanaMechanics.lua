@@ -11,7 +11,7 @@
 if myHero.charName ~= "Tristana" then return end
 
 
-local version = 0.4
+local version = 0.45
 local AUTOUPDATE = true
 
 
