@@ -155,6 +155,7 @@ function initComponents()
 	end)
 	Menu.Ads:addParam("autoLevel", "Auto-Level Spells", SCRIPT_PARAM_ONOFF, false)
 	Menu.Ads:addSubMenu("Killsteal", "KS")
+	Menu.Ads.KS:addParam("useW", "Use W", SCRIPT_PARAM_ONOFF, true)
 	Menu.Ads.KS:addParam("useR", "Use R", SCRIPT_PARAM_ONOFF, true)
 	Menu.Ads.KS:addParam("ignite", "Use Ignite", SCRIPT_PARAM_ONOFF, false)
 	Menu.Ads.KS:addParam("igniteRange", "Minimum range to cast Ignite", SCRIPT_PARAM_SLICE, 470, 0, 600, 0)
@@ -402,7 +403,7 @@ function KSR()
 
 		if skills.SkillR.ready and target ~= nil and ValidTarget(target, 645) and target.health < rDmg then
 			CastSpell(_R, target)
-		elseif skills.SkillR.ready and skills.SkillW.ready and target ~= nil and ValidTarget(target, 645 + skills.SkillW.range) and target.health < rDmg then
+		elseif skills.SkillR.ready and skills.SkillW.ready and target ~= nil and ValidTarget(target, 645 + skills.SkillW.range) and target.health < rDmg and Menu.Ads.KS.useW then
 			CastSpell(_W, target.x, target.z)
 			CastSpell(_R, target)
 		end
