@@ -186,7 +186,7 @@ function initComponents()
 		lastSkin = Menu.Ads.VIP.skin1
 	end
 	
-	PrintChat("<font color = \"#33CCCC\">Tristana Mechanics by</font> <font color = \"#fff8e7\">Mr Articuno</font>")
+	PrintChat("<font color = \"#33CCCC\">Tristana Mechanics by</font> <font color = \"#fff8e7\">Mr Articuno V"..version.."</font>")
 end
 
 function OnTick()
