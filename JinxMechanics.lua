@@ -11,7 +11,7 @@
 if myHero.charName ~= "Jinx" then return end
 
 
-local version = 0.2
+local version = 0.35
 local AUTOUPDATE = true
 
 
@@ -54,10 +54,10 @@ local qOff, wOff, eOff, rOff = 0,0,0,0
 local abilitySequence = {1, 2, 1, 3, 1, 4, 1, 2, 1, 2, 4, 2, 2, 3, 3, 4, 3, 3}
 local Ranges = { AA = 525 }
 local skills = {
-  skillQ = {spellName = "Barrel Roll", range = 850, speed = 2000, delay = .250, width = 160},
-  skillW = {spellName = "Drunken Rage", range = 1500, speed = 1600, delay = .250, width = 80},
-  skillE = {spellName = "Body Slam", range = 900, speed = 1600, delay = .250, width = 80},
-  skillR = {spellName = "Explosive Cask", range = 900000, speed = 2000, delay = .250, width = 400},
+  Q = {spellName = "Switcheroo", range = Ranges.AA + 25, speed = 2000, delay = .25, width = 160},
+  W = {spellName = "Zap", range = 1500, speed = 1600, delay = .25, width = 80},
+  E = {spellName = "Flame Chompers", range = 900, speed = 1600, delay = .25, width = 80},
+  R = {spellName = "Super Mega Death Rocket", range = math.huge, speed = 2000, delay = .50, width = 400},
 }
 local AnimationCancel =
 {
@@ -77,6 +77,7 @@ local BRKREADY, DFGREADY, HXGREADY, BWCREADY, TMTREADY, RAHREADY, RNDREADY, YGBR
 local lastBasicAttack = 0
 local swingDelay = 0.25
 local swing = false
+local miniGun = true
 
 function OnLoad()
 	initComponents()
@@ -97,8 +98,8 @@ function initComponents()
 	
 	Menu:addSubMenu("["..myHero.charName.." - Combo]", "JinxCombo")
 	Menu.JinxCombo:addParam("combo", "Combo mode", SCRIPT_PARAM_ONKEYDOWN, false, 32)
-	--Menu.JinxCombo:addSubMenu("Q Settings", "qSet")
-	--Menu.JinxCombo.qSet:addParam("useQ", "Use Q in combo", SCRIPT_PARAM_ONOFF, true)
+	Menu.JinxCombo:addSubMenu("Q Settings", "qSet")
+	Menu.JinxCombo.qSet:addParam("useQ", "Use Q in combo", SCRIPT_PARAM_ONOFF, true)
 	Menu.JinxCombo:addSubMenu("W Settings", "wSet")
 	Menu.JinxCombo.wSet:addParam("useW", "Use W in combo", SCRIPT_PARAM_ONOFF, true)
 	Menu.JinxCombo:addSubMenu("E Settings", "eSet")
@@ -115,13 +116,11 @@ function initComponents()
 	Menu:addSubMenu("["..myHero.charName.." - Laneclear]", "Laneclear")
 	Menu.Laneclear:addParam("lclr", "Laneclear Key", SCRIPT_PARAM_ONKEYDOWN, false, string.byte("V"))
 	Menu.Laneclear:addParam("useClearQ", "Use Q in Laneclear", SCRIPT_PARAM_ONOFF, true)
-	Menu.Laneclear:addParam("useClearW", "Use W in Laneclear", SCRIPT_PARAM_ONOFF, true)
 	Menu.Laneclear:addParam("useClearE", "Use E in Laneclear", SCRIPT_PARAM_ONOFF, true)
 	
 	Menu:addSubMenu("["..myHero.charName.." - Jungleclear]", "Jungleclear")
 	Menu.Jungleclear:addParam("jclr", "Jungleclear Key", SCRIPT_PARAM_ONKEYDOWN, false, string.byte("V"))
 	Menu.Jungleclear:addParam("useClearQ", "Use Q in Jungleclear", SCRIPT_PARAM_ONOFF, true)
-	Menu.Jungleclear:addParam("useClearW", "Use W in Jungleclear", SCRIPT_PARAM_ONOFF, true)
 	Menu.Jungleclear:addParam("useClearE", "Use E in Jungleclear", SCRIPT_PARAM_ONOFF, true)
 	
 	Menu:addSubMenu("["..myHero.charName.." - Additionals]", "Ads")
@@ -130,7 +129,7 @@ function initComponents()
 	end)
 	Menu.Ads:addParam("autoLevel", "Auto-Level Spells", SCRIPT_PARAM_ONOFF, false)
 	Menu.Ads:addSubMenu("Killsteal", "KS")
-	Menu.Ads.KS:addParam("useR", "Use R", SCRIPT_PARAM_ONOFF, true)
+	Menu.Ads.KS:addParam("useR", "Use R", SCRIPT_PARAM_ONOFF, false)
 	Menu.Ads.KS:addParam("ignite", "Use Ignite", SCRIPT_PARAM_ONOFF, false)
 	Menu.Ads.KS:addParam("igniteRange", "Minimum range to cast Ignite", SCRIPT_PARAM_SLICE, 470, 0, 600, 0)
 	Menu.Ads:addSubMenu("VIP", "VIP")
@@ -145,9 +144,9 @@ function initComponents()
 	Menu:addSubMenu("["..myHero.charName.." - Drawings]", "drawings")
 	local DManager = DrawManager()
 	DManager:CreateCircle(myHero, Ranges.AA, 1, {255, 0, 255, 0}):AddToMenu(Menu.drawings,"AA range", true, true, true)
-	DManager:CreateCircle(myHero, skills.skillQ.range, 1, {255, 0, 255, 0}):AddToMenu(Menu.drawings,"Q range", true, true, true)
-	DManager:CreateCircle(myHero, skills.skillW.range, 1, {255, 0, 255, 0}):AddToMenu(Menu.drawings,"W range", true, true, true)
-	DManager:CreateCircle(myHero, skills.skillE.range, 1, {255, 0, 255, 0}):AddToMenu(Menu.drawings,"E range", true, true, true)
+	DManager:CreateCircle(myHero, skills.Q.range, 1, {255, 0, 255, 0}):AddToMenu(Menu.drawings,"Q range", true, true, true)
+	DManager:CreateCircle(myHero, skills.W.range, 1, {255, 0, 255, 0}):AddToMenu(Menu.drawings,"W range", true, true, true)
+	DManager:CreateCircle(myHero, skills.E.range, 1, {255, 0, 255, 0}):AddToMenu(Menu.drawings,"E range", true, true, true)
 	
 	enemyMinions = minionManager(MINION_ENEMY, 360, myHero, MINION_SORT_MAXHEALTH_DEC)
 	allyMinions = minionManager(MINION_ALLY, 360, myHero, MINION_SORT_MAXHEALTH_DEC)
@@ -157,7 +156,7 @@ function initComponents()
 		GenModelPacket("Jinx", Menu.Ads.VIP.skin1)
 	end
 	
-	PrintChat("<font color = \"#33CCCC\">Jinx Mechanics by</font> <font color = \"#fff8e7\">Mr Articuno</font>")
+	PrintChat("<font color = \"#33CCCC\">Jinx Mechanics by</font> <font color = \"#fff8e7\">Mr Articuno V"..version.."</font>")
 end
 
 function OnTick()
@@ -182,10 +181,6 @@ function OnTick()
 	RNDREADY = (RNDSlot ~= nil and myHero:CanUseSpell(RNDSlot) == READY)
 	STDREADY = (STDSlot ~= nil and myHero:CanUseSpell(STDSlot) == READY)
 	IREADY = (ignite ~= nil and myHero:CanUseSpell(ignite) == READY)
-
-	if swing and os.clock() > lastBasicAttack + 0.625 then
-		--swing = false
-	end
 
 	if Menu.Ads.autoLevel then
 		AutoLevel()
@@ -227,6 +222,9 @@ function CDHandler()
 	youmuuReady = (youmuuSlot ~= nil and myHero:CanUseSpell(youmuuSlot) == READY)
 	bilgeReady = (bilgeSlot ~= nil and myHero:CanUseSpell(bilgeSlot) == READY)
 	bladeReady = (bladeSlot ~= nil and myHero:CanUseSpell(bladeSlot) == READY)
+
+	skills.Q.range = Ranges.AA + (myHero:GetSpellData(_Q).level * 25)
+
 	-- Summoners
 	if myHero:GetSpellData(SUMMONER_1).name:find("SummonerDot") then
 		ignite = SUMMONER_1
@@ -248,8 +246,11 @@ function Harass()
 		if Menu.Harass.useE and ValidTarget(enemy, Ranges.E + Ranges.AA) and EREADY then
 			CastSpell(_E, enemy)
 		end
-		if QREADY and Menu.Harass.useQ and ValidTarget(enemy, Ranges.AA + 175) then
-			--CastSpell(_Q)
+		if QREADY and Menu.Harass.useQ and ValidTarget(enemy, skills.Q.range) and not ValidTarget(enemy, Ranges.AA) and miniGun then
+			CastSpell(_Q)
+		end
+		if QREADY and Menu.Harass.useQ and ValidTarget(enemy, Ranges.AA) and not miniGun then
+			CastSpell(_Q)
 		end
 	end
 	
@@ -274,30 +275,36 @@ end
 
 function AllInCombo(target, typeCombo)
 	if target ~= nil and typeCombo == 0 then
-		if RREADY and Menu.JinxCombo.rSet.useR and ValidTarget(target, Ranges.R) then
+		if RREADY and Menu.JinxCombo.rSet.useR and ValidTarget(target, 3500) then
 			rDmg = getDmg("R", target, myHero)
 
 			if RREADY and target ~= nil and ValidTarget(target, Ranges.R) and target.health < rDmg then
-				local rPosition, rChance = VP:GetLineCastPosition(target, skills.skillR.delay, skills.skillR.width, skills.skillR.range, skills.skillR.speed, myHero, false)
+				local rPosition, rChance = VP:GetLineCastPosition(target, skills.R.delay, skills.R.width, skills.R.range, skills.R.speed, myHero, false)
 
 			    if rPosition ~= nil and rChance >= 2 then
 			      CastSpell(_R, rPosition.x, rPosition.z)
 			    end
 			end
 		end
-		if Menu.JinxCombo.eSet.useE and ValidTarget(target, skills.skillE.range) and EREADY then
-			local ePosition, eChance = VP:GetLineCastPosition(target, skills.skillE.delay, skills.skillE.width, skills.skillE.range, skills.skillE.speed, myHero, false)
+		if Menu.JinxCombo.eSet.useE and ValidTarget(target, skills.E.range) and EREADY then
+			local ePosition, eChance = VP:GetCircularCastPosition(target, skills.E.delay, skills.E.width, skills.E.range, skills.E.speed, myHero, false)
 
-		    if ePosition ~= nil and GetDistance(ePosition) < skills.skillE.range and eChance >= 2 then
+		    if ePosition ~= nil and GetDistance(ePosition) < skills.E.range and eChance >= 2 then
 		      CastSpell(_E, ePosition.x, ePosition.z)
 		    end
 		end
-		if WREADY and Menu.JinxCombo.wSet.useW and ValidTarget(target, skills.skillW.range) then
-			local wPosition, wChance = VP:GetLineCastPosition(target, skills.skillW.delay, skills.skillW.width, skills.skillW.range, skills.skillW.speed, myHero, true)
+		if WREADY and Menu.JinxCombo.wSet.useW and ValidTarget(target, skills.W.range) then
+			local wPosition, wChance = VP:GetLineCastPosition(target, skills.W.delay, skills.W.width, skills.W.range, skills.W.speed, myHero, true)
 
-		    if wPosition ~= nil and GetDistance(wPosition) < skills.skillW.range and wChance >= 2 then
+		    if wPosition ~= nil and GetDistance(wPosition) < skills.W.range and wChance >= 2 then
 		      CastSpell(_W, wPosition.x, wPosition.z)
 		    end
+		end
+		if QREADY and Menu.JinxCombo.qSet.useQ and ValidTarget(target, skills.Q.range) and not ValidTarget(target, Ranges.AA) and miniGun then
+			CastSpell(_Q)
+		end
+		if QREADY and Menu.JinxCombo.qSet.useQ and ValidTarget(target, Ranges.AA) and not miniGun then
+			CastSpell(_Q)
 		end
 	end
 end
@@ -307,14 +314,32 @@ end
 
 function LaneClear()
 	for i, enemyMinion in pairs(enemyMinions.objects) do
-		
+		if enemyMinion ~= nil then
+			if QREADY and Menu.Laneclear.useClearQ and ValidTarget(jungleMinion, skills.Q.range) and not ValidTarget(jungleMinion, Ranges.AA) and miniGun then
+				CastSpell(_Q)
+			end
+			if QREADY and Menu.Menu.Laneclear.useClearQ and ValidTarget(jungleMinion, Ranges.AA) and not miniGun then
+				CastSpell(_Q)
+			end
+			if EREADY and Menu.Menu.Laneclear.useClearE and ValidTarget(jungleMinion, Ranges.E) then
+				CastSpell(_E, enemyMinion.x, enemyMinion.z)
+			end
+		end
 	end
 end
 
 function JungleClear()
 	for i, jungleMinion in pairs(jungleMinions.objects) do
 		if jungleMinion ~= nil then
-			
+			if QREADY and Menu.Jungleclear.useClearQ and ValidTarget(jungleMinion, skills.Q.range) and not ValidTarget(jungleMinion, Ranges.AA) and miniGun then
+				CastSpell(_Q)
+			end
+			if QREADY and Menu.Jungleclear.useClearQ and ValidTarget(jungleMinion, Ranges.AA) and not miniGun then
+				CastSpell(_Q)
+			end
+			if EREADY and Menu.Jungleclear.useClearE and ValidTarget(jungleMinion, skills.E.range) then
+				CastSpell(_E, enemyMinion.x, enemyMinion.z)
+			end
 		end
 	end
 end
@@ -349,7 +374,7 @@ function KSR()
 		rDmg = getDmg("R", enemy, myHero)
 
 		if RREADY and enemy ~= nil and ValidTarget(enemy, Ranges.R) and enemy.health < rDmg then
-			local rPosition, rChance = VP:GetLineCastPosition(enemy, skills.skillR.delay, skills.skillR.width, skills.skillR.range, skills.skillR.speed, myHero, false)
+			local rPosition, rChance = VP:GetLineCastPosition(enemy, skills.R.delay, skills.R.width, skills.R.range, skills.R.speed, myHero, true)
 
 		    if rPosition ~= nil and rChance >= 2 then
 		      CastSpell(_R, rPosition.x, rPosition.z)
@@ -402,16 +427,12 @@ function ItemUsage(target)
 
 end
 
-
-function spellByPacket(spell, target)
-	if not VIP_USER then return end
-
-	local offset = spell.windUpTime - GetLatency / 2000
-
-	DelayAction(function()
-		Packet('S_CAST', {spellId = spell, targetNetworkId = target.networkID, fromX = target.x, toX = target.x, fromY = target.z, toY = target.z})
-	end, offset)
-	
+function OnProcessSpell( unit, spell )
+	if unit.isMe then
+		if spell.name == 'JinxQ' then
+			miniGun = (not miniGun)
+		end
+	end
 end
 
 -- Change skin function, made by Shalzuth
