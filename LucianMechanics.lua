@@ -50,7 +50,7 @@ local ts = nil
 local VP = nil
 local qMode = false
 local qOff, wOff, eOff, rOff = 0,0,0,0
-local abilitySequence = {3, 2, 3, 1, 4, 1, 1, 1, 1, 3, 4, 2, 2, 2, 2, 4, 3, 3}
+local abilitySequence = {1, 3, 2, 1, 4, 1, 1, 1, 2, 2, 4, 2, 2, 3, 3, 4, 3, 3}
 local usingUltimate = false
 local Ranges = { AA = 500 }
 local skills = {
