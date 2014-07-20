@@ -11,7 +11,7 @@
 if myHero.charName ~= "Tristana" then return end
 
 
-local version = 0.6
+local version = 0.61
 local AUTOUPDATE = true
 
 
@@ -249,9 +249,9 @@ function CDHandler()
 	divineReady = (divineSlot ~= nil and myHero:CanUseSpell(divineSlot) == READY)
 
 	Ranges.AA = 550 + (myHero.level * 8.5)
-	skills.SkillE = Ranges.AA
-	skills.SkillR = Ranges.AA
-	skills.SkillQ = Ranges.AA
+	skills.SkillE.range = Ranges.AA
+	skills.SkillR.range = Ranges.AA
+	skills.SkillQ.range = Ranges.AA
 
 	-- Summoners
 	if myHero:GetSpellData(SUMMONER_1).name:find("SummonerDot") then
