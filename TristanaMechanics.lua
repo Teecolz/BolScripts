@@ -11,7 +11,7 @@
 if myHero.charName ~= "Tristana" then return end
 
 
-local version = 0.45
+local version = 0.6
 local AUTOUPDATE = true
 
 
@@ -123,7 +123,7 @@ function initComponents()
 	Menu.TristanaCombo:addSubMenu("Q Settings", "qSet")
 	Menu.TristanaCombo.qSet:addParam("useQ", "Use Q in combo", SCRIPT_PARAM_ONOFF, true)
 	Menu.TristanaCombo:addSubMenu("W Settings", "wSet")
-	Menu.TristanaCombo.wSet:addParam("useW", "Use W", SCRIPT_PARAM_ONOFF, true)
+	Menu.TristanaCombo.wSet:addParam("useW", "Use W", SCRIPT_PARAM_ONOFF, false)
 	Menu.TristanaCombo.wSet:addParam("wAp", "AP Tristana", SCRIPT_PARAM_ONOFF, false)
 	Menu.TristanaCombo:addSubMenu("E Settings", "eSet")
 	Menu.TristanaCombo.eSet:addParam("useE", "Use E in combo", SCRIPT_PARAM_ONOFF, true)
@@ -133,19 +133,19 @@ function initComponents()
 	Menu:addSubMenu("["..myHero.charName.." - Harass]", "Harass")
 	Menu.Harass:addParam("harass", "Harass", SCRIPT_PARAM_ONKEYDOWN, false, string.byte("G"))
 	Menu.Harass:addParam("useQ", "Use Q in Harass", SCRIPT_PARAM_ONOFF, true)
-	Menu.Harass:addParam("useW", "Use W in Harass", SCRIPT_PARAM_ONOFF, true)
+	Menu.Harass:addParam("useW", "Use W in Harass", SCRIPT_PARAM_ONOFF, false)
 	Menu.Harass:addParam("useE", "Use E in Harass", SCRIPT_PARAM_ONOFF, true)
 	
 	Menu:addSubMenu("["..myHero.charName.." - Laneclear]", "Laneclear")
 	Menu.Laneclear:addParam("lclr", "Laneclear Key", SCRIPT_PARAM_ONKEYDOWN, false, string.byte("V"))
 	Menu.Laneclear:addParam("useClearQ", "Use Q in Laneclear", SCRIPT_PARAM_ONOFF, true)
-	Menu.Laneclear:addParam("useClearW", "Use W in Laneclear", SCRIPT_PARAM_ONOFF, true)
+	Menu.Laneclear:addParam("useClearW", "Use W in Laneclear", SCRIPT_PARAM_ONOFF, false)
 	Menu.Laneclear:addParam("useClearE", "Use E in Laneclear", SCRIPT_PARAM_ONOFF, true)
 	
 	Menu:addSubMenu("["..myHero.charName.." - Jungleclear]", "Jungleclear")
 	Menu.Jungleclear:addParam("jclr", "Jungleclear Key", SCRIPT_PARAM_ONKEYDOWN, false, string.byte("V"))
 	Menu.Jungleclear:addParam("useClearQ", "Use Q in Jungleclear", SCRIPT_PARAM_ONOFF, true)
-	Menu.Jungleclear:addParam("useClearW", "Use W in Jungleclear", SCRIPT_PARAM_ONOFF, true)
+	Menu.Jungleclear:addParam("useClearW", "Use W in Jungleclear", SCRIPT_PARAM_ONOFF, false)
 	Menu.Jungleclear:addParam("useClearE", "Use E in Jungleclear", SCRIPT_PARAM_ONOFF, true)
 	
 	Menu:addSubMenu("["..myHero.charName.." - Additionals]", "Ads")
@@ -153,6 +153,7 @@ function initComponents()
 	AddProcessSpellCallback(function(unit, spell)
 		animationCancel(unit,spell)
 	end)
+	Menu.Ads:addParam("antiGapCloser", "Anti Gap Closer", SCRIPT_PARAM_ONOFF, false)
 	Menu.Ads:addParam("autoLevel", "Auto-Level Spells", SCRIPT_PARAM_ONOFF, false)
 	Menu.Ads:addSubMenu("Killsteal", "KS")
 	Menu.Ads.KS:addParam("useW", "Use W", SCRIPT_PARAM_ONOFF, false)
@@ -170,10 +171,11 @@ function initComponents()
 	
 	Menu:addSubMenu("["..myHero.charName.." - Drawings]", "drawings")
 	local DManager = DrawManager()
-	DManager:CreateCircle(myHero, Ranges.AA, 1, {255, 0, 255, 0}):AddToMenu(Menu.drawings,"AA range", true, true, true)
+	DManager:CreateCircle(myHero, Ranges.AA + (myHero.level * 8.5), 1, {255, 0, 255, 0}):AddToMenu(Menu.drawings,"AA range", true, true, true)
 	DManager:CreateCircle(myHero, skills.SkillQ.range, 1, {255, 0, 255, 0}):AddToMenu(Menu.drawings,"Q range", true, true, true)
 	DManager:CreateCircle(myHero, skills.SkillW.range, 1, {255, 0, 255, 0}):AddToMenu(Menu.drawings,"W range", true, true, true)
-	DManager:CreateCircle(myHero, skills.SkillE.range, 1, {255, 0, 255, 0}):AddToMenu(Menu.drawings,"E range", true, true, true)
+	DManager:CreateCircle(myHero, Ranges.AA + (myHero.level * 8.5), 1, {255, 0, 255, 0}):AddToMenu(Menu.drawings,"E range", true, true, true)
+	DManager:CreateCircle(myHero, Ranges.AA + (myHero.level * 8.5), 1, {255, 0, 255, 0}):AddToMenu(Menu.drawings,"R range", true, true, true)
 	
 	targetMinions = minionManager(MINION_ENEMY, 360, myHero, MINION_SORT_MAXHEALTH_DEC)
 	allyMinions = minionManager(MINION_ALLY, 360, myHero, MINION_SORT_MAXHEALTH_DEC)
@@ -247,6 +249,9 @@ function CDHandler()
 	divineReady = (divineSlot ~= nil and myHero:CanUseSpell(divineSlot) == READY)
 
 	Ranges.AA = 550 + (myHero.level * 8.5)
+	skills.SkillE = Ranges.AA
+	skills.SkillR = Ranges.AA
+	skills.SkillQ = Ranges.AA
 
 	-- Summoners
 	if myHero:GetSpellData(SUMMONER_1).name:find("SummonerDot") then
@@ -487,6 +492,59 @@ end
 
 function skinChanged()
 	return Menu.Ads.VIP.skin1 ~= lastSkin
+end
+
+function OnProcessSpell(unit, spell)
+    if not Menu.Ads.antiGapCloser then return end
+
+    local jarvanAddition = unit.charName == "JarvanIV" and unit:CanUseSpell(_Q) ~= READY and _R or _Q 
+    local isAGapcloserUnit = {
+        ['Aatrox']      = {true, spell = _Q,                  range = 1000,  projSpeed = 1200, },
+        ['Akali']       = {true, spell = _R,                  range = 800,   projSpeed = 2200, }, -- Targeted ability
+        ['Alistar']     = {true, spell = _W,                  range = 650,   projSpeed = 2000, }, -- Targeted ability
+        ['Diana']       = {true, spell = _R,                  range = 825,   projSpeed = 2000, }, -- Targeted ability
+        ['Gragas']      = {true, spell = _E,                  range = 600,   projSpeed = 2000, },
+        ['Graves']      = {true, spell = _E,                  range = 425,   projSpeed = 2000, exeption = true },
+        ['Hecarim']     = {true, spell = _R,                  range = 1000,  projSpeed = 1200, },
+        ['Irelia']      = {true, spell = _Q,                  range = 650,   projSpeed = 2200, }, -- Targeted ability
+        ['JarvanIV']    = {true, spell = jarvanAddition,      range = 770,   projSpeed = 2000, }, -- Skillshot/Targeted ability
+        ['Jax']         = {true, spell = _Q,                  range = 700,   projSpeed = 2000, }, -- Targeted ability
+        ['Jayce']       = {true, spell = 'JayceToTheSkies',   range = 600,   projSpeed = 2000, }, -- Targeted ability
+        ['Khazix']      = {true, spell = _E,                  range = 900,   projSpeed = 2000, },
+        ['Leblanc']     = {true, spell = _W,                  range = 600,   projSpeed = 2000, },
+        ['LeeSin']      = {true, spell = 'blindmonkqtwo',     range = 1300,  projSpeed = 1800, },
+        ['Leona']       = {true, spell = _E,                  range = 900,   projSpeed = 2000, },
+        ['Malphite']    = {true, spell = _R,                  range = 1000,  projSpeed = 1500 + unit.ms},
+        ['Maokai']      = {true, spell = _Q,                  range = 600,   projSpeed = 1200, }, -- Targeted ability
+        ['MonkeyKing']  = {true, spell = _E,                  range = 650,   projSpeed = 2200, }, -- Targeted ability
+        ['Pantheon']    = {true, spell = _W,                  range = 600,   projSpeed = 2000, }, -- Targeted ability
+        ['Poppy']       = {true, spell = _E,                  range = 525,   projSpeed = 2000, }, -- Targeted ability
+        ['Renekton']    = {true, spell = _E,                  range = 450,   projSpeed = 2000, },
+        ['Sejuani']     = {true, spell = _Q,                  range = 650,   projSpeed = 2000, },
+        ['Shen']        = {true, spell = _E,                  range = 575,   projSpeed = 2000, },
+        ['Tristana']    = {true, spell = _W,                  range = 900,   projSpeed = 2000, },
+        ['Tryndamere']  = {true, spell = 'Slash',             range = 650,   projSpeed = 1450, },
+        ['XinZhao']     = {true, spell = _E,                  range = 650,   projSpeed = 2000, }, -- Targeted ability
+    }
+    if unit.type == 'obj_AI_Hero' and unit.team == TEAM_ENEMY and isAGapcloserUnit[unit.charName] and GetDistance(unit) < 2000 and spell ~= nil then
+        if spell.name == (type(isAGapcloserUnit[unit.charName].spell) == 'number' and unit:GetSpellData(isAGapcloserUnit[unit.charName].spell).name or isAGapcloserUnit[unit.charName].spell) then
+            if spell.target ~= nil and spell.target.name == myHero.name or isAGapcloserUnit[unit.charName].spell == 'blindmonkqtwo' then
+                CastSpell(_R, unit)
+            else
+                spellExpired = false
+                informationTable = {
+                    spellSource = unit,
+                    spellCastedTick = GetTickCount(),
+                    spellStartPos = Point(spell.startPos.x, spell.startPos.z),
+                    spellEndPos = Point(spell.endPos.x, spell.endPos.z),
+                    spellRange = isAGapcloserUnit[unit.charName].range,
+                    spellSpeed = isAGapcloserUnit[unit.charName].projSpeed,
+                    spellIsAnExpetion = isAGapcloserUnit[unit.charName].exeption or false,
+                }
+            end
+        end
+    end
+
 end
 
 function OnDraw()
