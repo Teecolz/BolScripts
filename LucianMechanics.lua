@@ -8,14 +8,14 @@
 
 ]]
 
-if myHero.charName ~= "Elise" then return end
+if myHero.charName ~= "Lucian" then return end
 
 
-local version = 0.2
+local version = 0.1
 local AUTOUPDATE = true
 
 
-local SCRIPT_NAME = "EliseMechanics"
+local SCRIPT_NAME = "LucianMechanics"
 local SOURCELIB_URL = "https://raw.github.com/TheRealSource/public/master/common/SourceLib.lua"
 local SOURCELIB_PATH = LIB_PATH.."SourceLib.lua"
 if FileExist(SOURCELIB_PATH) then
@@ -34,9 +34,6 @@ end
 local RequireI = Require("SourceLib")
 RequireI:Add("vPrediction", "https://raw.github.com/Hellsing/BoL/master/common/VPrediction.lua")
 RequireI:Add("SOW", "https://raw.github.com/Hellsing/BoL/master/common/SOW.lua")
-if VIP_USER then
-	RequireI:Add("Prodiction", "https://bitbucket.org/Klokje/public-klokjes-bol-scripts/raw/ec830facccefb3b52212dba5696c08697c3c2854/Test/Prodiction/Prodiction.lua")	
-end
 --RequireI:Add("mrLib", "https://raw.githubusercontent.com/gmlyra/BolScripts/master/common/mrLib.lua")
 
 RequireI:Check()
@@ -53,15 +50,15 @@ local ts = nil
 local VP = nil
 local qMode = false
 local qOff, wOff, eOff, rOff = 0,0,0,0
-local abilitySequence = {2, 1, 3, 2, 2, 4, 1, 1, 2, 2, 4, 1, 1, 3, 3, 4, 3, 3}
-local Ranges = { AA = 550 }
+local abilitySequence = {3, 2, 3, 1, 4, 1, 1, 1, 1, 3, 4, 2, 2, 2, 2, 4, 3, 3}
+local usingUltimate = false
+local Ranges = { AA = 500 }
 local skills = {
-    Q = { ready = false, name = myHero:GetSpellData(_Q).name, range = 625, delay = myHero:GetSpellData(_Q).delayTotalTimePercent, speed = myHero:GetSpellData(_Q).missileSpeed, width = myHero:GetSpellData(_Q).lineWidth },
-	W = { ready = false, name = myHero:GetSpellData(_W).name, range = 950, delay = 0.25, speed = 1000, width = 100 },
-	E = { ready = false, name = myHero:GetSpellData(_E).name, range = 1075, delay = 0.25, speed = 1300, width = 90 },
-	R = { ready = false, name = myHero:GetSpellData(_R).name, range = 0, delay = myHero:GetSpellData(_R).delayTotalTimePercent, speed = myHero:GetSpellData(_R).missileSpeed, width = myHero:GetSpellData(_R).lineWidth },
+    Q = { ready = false, name = myHero:GetSpellData(_Q).name, range = 500, delay = 0.32, speed = math.huge, width = myHero:GetSpellData(_Q).lineWidth },
+	W = { ready = false, name = myHero:GetSpellData(_W).name, range = 1000, delay = 0.3, speed = myHero:GetSpellData(_W).missileSpeed, width = myHero:GetSpellData(_W).lineWidth },
+	E = { ready = false, name = myHero:GetSpellData(_E).name, range = 425, delay = 0.25, speed = myHero:GetSpellData(_E).missileSpeed, width = myHero:GetSpellData(_E).lineWidth },
+	R = { ready = false, name = myHero:GetSpellData(_R).name, range = 1400, delay = myHero:GetSpellData(_R).delayTotalTimePercent, speed = 2800, width = 110 },
 }
-
 local AnimationCancel =
 {
 	[1]=function() myHero:MoveTo(mousePos.x,mousePos.z) end, --"Move"
@@ -77,17 +74,14 @@ local AnimationCancel =
 local tiamatSlot, hydraSlot, youmuuSlot, bilgeSlot, bladeSlot, dfgSlot, divineSlot = nil, nil, nil, nil, nil, nil, nil
 local tiamatReady, hydraReady, youmuuReady, bilgeReady, bladeReady, dfgReady, divineReady = nil, nil, nil, nil, nil, nil, nil
 
+--[[Auto Attacks]]--
+local waitAA = false
+
 --[[Misc]]--
 local lastSkin = 0
 local isSAC = false
 local isMMA = false
 local target = nil
-local spiderForm = false
-
--- [[ VIP Variables]] --
-local Prodict
-local ProdictE, ProdictECol
-
 
 --Credit Trees
 function GetCustomTarget()
@@ -107,11 +101,11 @@ function initComponents()
 	-- SOW Declare
 	Orbwalker = SOW(VP)
 	-- Target Selector
-	ts = TargetSelector(TARGET_LESS_CAST_PRIORITY, 1075)
+	ts = TargetSelector(TARGET_LESS_CAST_PRIORITY, 1400)
 	
-	Menu = scriptConfig("Elise Mechanics by Mr Articuno", "EliseMA")
+	Menu = scriptConfig("Lucian Mechanics by Mr Articuno", "LucianMA")
 
-	if _G.MMA_Target ~= nil then
+	if _G.MMA_Loaded ~= nil then
 		PrintChat("<font color = \"#33CCCC\">MMA Status:</font> <font color = \"#fff8e7\"> Loaded</font>")
 		isMMA = true
 	elseif _G.AutoCarry ~= nil then
@@ -123,43 +117,47 @@ function initComponents()
 		Orbwalker:LoadToMenu(Menu.SOWorb)
 	end
 	
-	Menu:addSubMenu("["..myHero.charName.." - Combo]", "EliseCombo")
-	Menu.EliseCombo:addParam("combo", "Combo mode", SCRIPT_PARAM_ONKEYDOWN, false, 32)
-	Menu.EliseCombo:addSubMenu("Q Settings", "qSet")
-	Menu.EliseCombo.qSet:addParam("useQ", "Use Q in combo", SCRIPT_PARAM_ONOFF, true)
-	Menu.EliseCombo:addSubMenu("W Settings", "wSet")
-	Menu.EliseCombo.wSet:addParam("useW", "Use W", SCRIPT_PARAM_ONOFF, true)
-	Menu.EliseCombo:addSubMenu("E Settings", "eSet")
-	Menu.EliseCombo.eSet:addParam("useE", "Use E in combo", SCRIPT_PARAM_ONOFF, true)
-	Menu.EliseCombo:addSubMenu("R Settings", "rSet")
-	Menu.EliseCombo.rSet:addParam("useR", "Auto Change Form", SCRIPT_PARAM_ONOFF, true)
-	Menu.EliseCombo.rSet:addParam("useRE", "Gap Closer Gank", SCRIPT_PARAM_ONOFF, false)
+	Menu:addSubMenu("["..myHero.charName.." - Combo]", "LucianCombo")
+	Menu.LucianCombo:addParam("combo", "Combo mode", SCRIPT_PARAM_ONKEYDOWN, false, 32)
+	Menu.LucianCombo:addSubMenu("Q Settings", "qSet")
+	Menu.LucianCombo.qSet:addParam("useQ", "Use Q in combo", SCRIPT_PARAM_ONOFF, true)
+	Menu.LucianCombo:addSubMenu("W Settings", "wSet")
+	Menu.LucianCombo.wSet:addParam("useW", "Use W", SCRIPT_PARAM_ONOFF, false)
+	Menu.LucianCombo:addSubMenu("E Settings", "eSet")
+	Menu.LucianCombo.eSet:addParam("useE", "Use E in combo", SCRIPT_PARAM_ONOFF, true)
+	Menu.LucianCombo:addSubMenu("R Settings", "rSet")
+	Menu.LucianCombo.rSet:addParam("useR", "Use Smart Ultimate", SCRIPT_PARAM_ONOFF, true)
 	
 	Menu:addSubMenu("["..myHero.charName.." - Harass]", "Harass")
 	Menu.Harass:addParam("harass", "Harass", SCRIPT_PARAM_ONKEYDOWN, false, string.byte("G"))
 	Menu.Harass:addParam("useQ", "Use Q in Harass", SCRIPT_PARAM_ONOFF, true)
 	Menu.Harass:addParam("useW", "Use W in Harass", SCRIPT_PARAM_ONOFF, true)
-	Menu.Harass:addParam("useE", "Use E in Harass", SCRIPT_PARAM_ONOFF, true)
-
+	Menu.Harass:addParam("useE", "Use E in Harass", SCRIPT_PARAM_ONOFF, false)
+	
 	Menu:addSubMenu("["..myHero.charName.." - Laneclear]", "Laneclear")
 	Menu.Laneclear:addParam("lclr", "Laneclear Key", SCRIPT_PARAM_ONKEYDOWN, false, string.byte("V"))
 	Menu.Laneclear:addParam("useClearQ", "Use Q in Laneclear", SCRIPT_PARAM_ONOFF, true)
-	Menu.Laneclear:addParam("useClearW", "Use W in Laneclear", SCRIPT_PARAM_ONOFF, true)
+	Menu.Laneclear:addParam("useClearW", "Use W in Laneclear", SCRIPT_PARAM_ONOFF, false)
+	Menu.Laneclear:addParam("useClearE", "Use E in Laneclear", SCRIPT_PARAM_ONOFF, false)
 	
 	Menu:addSubMenu("["..myHero.charName.." - Jungleclear]", "Jungleclear")
 	Menu.Jungleclear:addParam("jclr", "Jungleclear Key", SCRIPT_PARAM_ONKEYDOWN, false, string.byte("V"))
 	Menu.Jungleclear:addParam("useClearQ", "Use Q in Jungleclear", SCRIPT_PARAM_ONOFF, true)
-	Menu.Jungleclear:addParam("useClearW", "Use W in Jungleclear", SCRIPT_PARAM_ONOFF, true)
+	Menu.Jungleclear:addParam("useClearW", "Use W in Jungleclear", SCRIPT_PARAM_ONOFF, false)
+	Menu.Jungleclear:addParam("useClearE", "Use E in Jungleclear", SCRIPT_PARAM_ONOFF, false)
 	
 	Menu:addSubMenu("["..myHero.charName.." - Additionals]", "Ads")
 	Menu.Ads:addParam("cancel", "Animation Cancel", SCRIPT_PARAM_LIST, 1, { "Move","Laugh","Dance","Taunt","joke","Nothing" })
+	AddProcessSpellCallback(function(unit, spell)
+		animationCancel(unit,spell)
+	end)
 	Menu.Ads:addParam("autoLevel", "Auto-Level Spells", SCRIPT_PARAM_ONOFF, false)
+	Menu.Ads:addParam("waitAA", "Faker Mode", SCRIPT_PARAM_ONOFF, false)
 	Menu.Ads:addSubMenu("Killsteal", "KS")
 	Menu.Ads.KS:addParam("ignite", "Use Ignite", SCRIPT_PARAM_ONOFF, false)
 	Menu.Ads.KS:addParam("igniteRange", "Minimum range to cast Ignite", SCRIPT_PARAM_SLICE, 470, 0, 600, 0)
 	Menu.Ads:addSubMenu("VIP", "VIP")
 	--Menu.Ads.VIP:addParam("spellCast", "Spell by Packet", SCRIPT_PARAM_ONOFF, true)
-	Menu.Ads.VIP:addParam("prodiction", "Use Prodiction", SCRIPT_PARAM_ONOFF, false)
 	Menu.Ads.VIP:addParam("skin", "Use custom skin", SCRIPT_PARAM_ONOFF, false)
 	Menu.Ads.VIP:addParam("skin1", "Skin changer", SCRIPT_PARAM_SLICE, 1, 1, 3)
 	
@@ -169,30 +167,22 @@ function initComponents()
 	
 	Menu:addSubMenu("["..myHero.charName.." - Drawings]", "drawings")
 	local DManager = DrawManager()
-	DManager:CreateCircle(myHero, Ranges.AA, 1, {255, 0, 255, 0}):AddToMenu(Menu.drawings,"AA range", true, true, true)
+	DManager:CreateCircle(myHero, Ranges.AA + (myHero.level * 8.5), 1, {255, 0, 255, 0}):AddToMenu(Menu.drawings,"AA range", true, true, true)
 	DManager:CreateCircle(myHero, skills.Q.range, 1, {255, 0, 255, 0}):AddToMenu(Menu.drawings,"Q range", true, true, true)
 	DManager:CreateCircle(myHero, skills.W.range, 1, {255, 0, 255, 0}):AddToMenu(Menu.drawings,"W range", true, true, true)
 	DManager:CreateCircle(myHero, skills.E.range, 1, {255, 0, 255, 0}):AddToMenu(Menu.drawings,"E range", true, true, true)
+	DManager:CreateCircle(myHero, skills.R.range, 1, {255, 0, 255, 0}):AddToMenu(Menu.drawings,"R range", true, true, true)
 	
 	targetMinions = minionManager(MINION_ENEMY, 360, myHero, MINION_SORT_MAXHEALTH_DEC)
 	allyMinions = minionManager(MINION_ALLY, 360, myHero, MINION_SORT_MAXHEALTH_DEC)
 	jungleMinions = minionManager(MINION_JUNGLE, 360, myHero, MINION_SORT_MAXHEALTH_DEC)
-
-	if VIP_USER then
-		require 'Prodiction'
-		require 'Collision'
-		Prodict = ProdictManager.GetInstance()
-		ProdictE = Prodict:AddProdictionObject(_E, skills.E.range, skills.E.speed, skills.E.delay, skills.E.width)
-        ProdictECol = Collision(skills.E.range, skills.E.speed, skills.E.delay, skills.E.width)
-
-	end
 	
 	if Menu.Ads.VIP.skin and VIP_USER then
-		GenModelPacket("Elise", Menu.Ads.VIP.skin1)
+		GenModelPacket("Lucian", Menu.Ads.VIP.skin1)
 		lastSkin = Menu.Ads.VIP.skin1
 	end
 	
-	PrintChat("<font color = \"#33CCCC\">Elise Mechanics by</font> <font color = \"#fff8e7\">Mr Articuno</font>")
+	PrintChat("<font color = \"#33CCCC\">Lucian Mechanics by</font> <font color = \"#fff8e7\">Mr Articuno V"..version.."</font>")
 end
 
 function OnTick()
@@ -204,7 +194,7 @@ function OnTick()
 	KillSteal()
 
 	if Menu.Ads.VIP.skin and VIP_USER and skinChanged() then
-		GenModelPacket("Elise", Menu.Ads.VIP.skin1)
+		GenModelPacket("Lucian", Menu.Ads.VIP.skin1)
 		lastSkin = Menu.Ads.VIP.skin1
 	end
 
@@ -212,14 +202,14 @@ function OnTick()
 		AutoLevel()
 	end
 	
-	if Menu.EliseCombo.combo then
+	if Menu.LucianCombo.combo then
 		Combo()
 	end
 	
 	if Menu.Harass.harass then
 		Harass()
 	end
-
+	
 	if Menu.Laneclear.lclr then
 		LaneClear()
 	end
@@ -254,10 +244,6 @@ function CDHandler()
 	dfgReady = (dfgSlot ~= nil and myHero:CanUseSpell(dfgSlot) == READY)
 	divineReady = (divineSlot ~= nil and myHero:CanUseSpell(divineSlot) == READY)
 
-	if myHero.dead then
-		spiderForm = false
-	end
-
 	-- Summoners
 	if myHero:GetSpellData(SUMMONER_1).name:find("SummonerDot") then
 		ignite = SUMMONER_1
@@ -271,62 +257,23 @@ end
 
 function Harass()	
 	if target ~= nil and ValidTarget(target) then
-		
-		if not spiderForm then
-			if skills.E.ready and ValidTarget(target, skills.E.range) and Menu.Harass.useE then
-				if VIP_USER and Menu.Ads.VIP.prodiction then
-					ProdictE:GetPredictionCallBack(target, CastE)
-				else
-					local ePosition, eChance = VP:GetLineCastPosition(target, skills.E.delay, skills.E.width, skills.E.range, skills.E.speed, myHero, true)
-
-				    if ePosition ~= nil and GetDistance(ePosition) < skills.E.range and eChance >= 2 then
-				      CastSpell(_E, ePosition.x, ePosition.z)
-				    end
-				end
-			end
-
-			if skills.W.ready and ValidTarget(target, skills.W.range) and Menu.Harass.useW then
-				if VIP_USER and Menu.Ads.VIP.prodiction then
-					local pos, info = Prodiction.GetPrediction(target, skills.W.range, skills.W.speed, skills.W.delay, skills.W.width)
-					if pos then 
-						CastSpell(_W, pos.x, pos.z)
-					end
-				else
-					local Position, Chance = VP:GetLineCastPosition(target, skills.W.delay, skills.W.width, skills.W.range, skills.W.speed, myHero, false)
-
-				    if Position ~= nil and GetDistance(Position) < skills.W.range and Chance >= 2 then
-				      CastSpell(_W, Position.x, Position.z)
-				    end
-				end
-			end
-
-			if skills.Q.ready and ValidTarget(target, skills.Q.range) and Menu.Harass.useQ then
-				CastSpell(_Q, target)
-			end
+		if Menu.Harass.useE and ValidTarget(target, skills.E.range) and skills.E.ready then
+			CastSpell(_E, target.x, target.z)
 		end
 
-		if spiderForm then
-
-			if skills.E.ready and ValidTarget(target, skills.E.range) and Menu.Harass.useE then
-				CastSpell(_E, target)
-				CastSpell(_E, target.x, target.z)
-			end
-
-			if skills.W.ready and ValidTarget(target, Ranges.AA - 425) and Menu.Harass.useW then
-				CastSpell(_E)
-			end
-
-			if skills.Q.ready and ValidTarget(target, skills.Q.range - 125) and Menu.Harass.useQ then
-				CastSpell(_Q, target)
-			end
-
+		if Menu.Harass.useQ and ValidTarget(target, skills.Q.range) and skills.Q.ready then
+			CastSpell(_Q, target)
 		end
 
+		if Menu.Harass.useW and ValidTarget(target, skills.W.range) and skills.W.ready then
+			CastSpell(_W, target.x, target.z)
+		end
 	end
 	
 end
 
 -- End Harass --
+
 
 -- Combo Selector --
 
@@ -346,72 +293,47 @@ function AllInCombo(target, typeCombo)
 	if target ~= nil and typeCombo == 0 then
 		ItemUsage(target)
 
-		if not spiderForm then
-			if skills.E.ready and ValidTarget(target, skills.E.range) and Menu.EliseCombo.eSet.useE then
-				if VIP_USER and Menu.Ads.VIP.prodiction then
-					ProdictE:GetPredictionCallBack(target, CastE)
-				else
-					local ePosition, eChance = VP:GetLineCastPosition(target, skills.E.delay, skills.E.width, skills.E.range, skills.E.speed, myHero, true)
-
-				    if ePosition ~= nil and GetDistance(ePosition) < skills.E.range and eChance >= 2 then
-				      CastSpell(_E, ePosition.x, ePosition.z)
-				    end
-				end
-			end
-
-			if skills.W.ready and ValidTarget(target, skills.W.range) and Menu.EliseCombo.wSet.useW then
-				if VIP_USER and Menu.Ads.VIP.prodiction then
-					local pos, info = Prodiction.GetPrediction(target, skills.W.range, skills.W.speed, skills.W.delay, skills.W.width)
-					if pos then 
-						CastSpell(_W, pos.x, pos.z)
+		if not usingUltimate then
+			if not Menu.Ads.waitAA then
+				if not waitAA then
+					if Menu.LucianCombo.eSet.useE and GetDistance(target) > Ranges.AA and GetDistance(target) < Ranges.AA + skills.E.range and skills.E.ready then
+						CastSpell(_E, target.x, target.z)
+						waitAA = true
 					end
-				else
-					local Position, Chance = VP:GetLineCastPosition(target, skills.W.delay, skills.W.width, skills.W.range, skills.W.speed, myHero, false)
 
-				    if Position ~= nil and GetDistance(Position) < skills.W.range and Chance >= 2 then
-				      CastSpell(_W, Position.x, Position.z)
-				    end
+					if Menu.LucianCombo.qSet.useQ and ValidTarget(target, skills.Q.range) and skills.Q.ready then
+						CastSpell(_Q, target)
+						waitAA = true
+					end
+
+					if Menu.LucianCombo.eSet.useE and ValidTarget(target, skills.W.range) and skills.W.ready then
+						CastSpell(_W, target.x, target.z)
+						waitAA = true
+					end
 				end
-			end
+			else
+				if Menu.LucianCombo.eSet.useE and GetDistance(target) > Ranges.AA and GetDistance(target) < Ranges.AA + skills.E.range and skills.E.ready then
+						CastSpell(_E, target.x, target.z)
+					end
 
-			if skills.Q.ready and ValidTarget(target, skills.Q.range) and Menu.EliseCombo.qSet.useQ then
-				CastSpell(_Q, target)
-			end
+				if Menu.LucianCombo.qSet.useQ and ValidTarget(target, skills.Q.range) and skills.Q.ready then
+					CastSpell(_Q, target)
+				end
 
-			if skills.R.ready and ValidTarget(target, skills.E.range) and Menu.EliseCombo.rSet.useR then
-				CastSpell(_R)
+				if Menu.LucianCombo.eSet.useE and ValidTarget(target, skills.W.range) and skills.W.ready then
+					CastSpell(_W, target.x, target.z)
+				end
 			end
 		end
+		
+		if (Menu.LucianCombo.rSet.useR and GetDistance(target) > 1000 and GetDistance(target) < 1400 and skills.R.ready) or not skills.E.ready and GetDistance(target) > Ranges.AA then
+			if not usingUltimate then
+				local Position, Chance = VP:GetLineCastPosition(target, skills.R.delay, skills.R.width, skills.R.range, skills.R.speed, myHero, false)
 
-		if spiderForm then
-
-			if Menu.EliseCombo.rSet.useRE and ValidTarget(target, skills.E.range) and skills.R.ready then
-				if skills.E.ready then
-					CastSpell(_E)
-					CastSpell(_E, target)
-					CastSpell(_R)
-				end
+			    if Position ~= nil and GetDistance(Position) < skills.R.range and Chance >= 2 then
+			      CastSpell(_R, Position.x, Position.z)
+			    end
 			end
-
-			if skills.E.ready and ValidTarget(target, skills.E.range) and GetDistance(target) >= 425 and Menu.EliseCombo.eSet.useE then
-				CastSpell(_E, target)
-				CastSpell(_E, target.x, target.z)
-			end
-
-			if skills.Q.ready and ValidTarget(target, skills.Q.range - 125) and Menu.EliseCombo.qSet.useQ then
-				CastSpell(_Q, target)
-			end
-
-			if skills.W.ready and ValidTarget(target, Ranges.AA - 425) and Menu.EliseCombo.wSet.useW then
-				CastSpell(_W)
-			end
-
-			if not skills.Q.ready and not skills.E.ready and not skills.W.ready and GetDistance(target) >= 325 then
-				if skills.R.ready and Menu.EliseCombo.rSet.useR then
-					CastSpell(_R)
-				end
-			end
-
 		end
 
 	end
@@ -421,92 +343,41 @@ end
 
 
 function LaneClear()
-	for i, target in pairs(targetMinions.objects) do
-		if target ~= nil then
-			
-			if not spiderForm then
-				if skills.W.ready and ValidTarget(target, skills.W.range) and Menu.Laneclear.useClearW then
-					if VIP_USER and Menu.Ads.VIP.prodiction then
-						local pos, info = Prodiction.GetPrediction(target, skills.W.range, skills.W.speed, skills.W.delay, skills.W.width)
-						if pos then 
-							CastSpell(_W, pos.x, pos.z)
-						end
-					else
-						local Position, Chance = VP:GetLineCastPosition(target, skills.W.delay, skills.W.width, skills.W.range, skills.W.speed, myHero, false)
-
-					    if Position ~= nil and GetDistance(Position) < skills.W.range and Chance >= 2 then
-					      CastSpell(_W, Position.x, Position.z)
-					    end
-					end
-				end
-
-				if skills.Q.ready and ValidTarget(target, skills.Q.range) and Menu.Laneclear.useClearQ then
-					CastSpell(_Q, target)
-				end
-
-				if skills.R.ready and ValidTarget(target, skills.E.range) then
-					CastSpell(_R)
-				end
+	for i, targetMinion in pairs(targetMinions.objects) do
+		if targetMinion ~= nil then
+			if Menu.Laneclear.useClearE and ValidTarget(targetMinion, skills.E.range) and skills.E.ready then
+				CastSpell(_E, targetMinion.x, targetMinion.z)
+				waitAA = true
 			end
 
-			if spiderForm then
-
-				if skills.W.ready and ValidTarget(target, Ranges.AA - 425) and Menu.Laneclear.useClearW then
-					CastSpell(_W)
-				end
-
-				if skills.Q.ready and ValidTarget(target, skills.Q.range - 125) and Menu.Laneclear.useClearQ then
-					CastSpell(_Q, target)
-				end
-
+			if Menu.Laneclear.useClearQ and ValidTarget(targetMinion, skills.Q.range) and skills.Q.ready then
+				CastSpell(_Q, targetMinion)
+				waitAA = true
 			end
 
+			if Menu.Laneclear.useClearW and ValidTarget(targetMinion, skills.W.range) and skills.W.ready then
+				CastSpell(_W, targetMinion.x, targetMinion.z)
+				waitAA = true
+			end
 		end
 		
 	end
 end
 
 function JungleClear()
-	for i, target in pairs(jungleMinions.objects) do
-		if target ~= nil then
-			
-			if not spiderForm then
-				if skills.W.ready and ValidTarget(target, skills.W.range) and Menu.Jungleclear.useClearW then
-					if VIP_USER and Menu.Ads.VIP.prodiction then
-						local pos, info = Prodiction.GetPrediction(target, skills.W.range, skills.W.speed, skills.W.delay, skills.W.width)
-						if pos then 
-							CastSpell(_W, pos.x, pos.z)
-						end
-					else
-						local Position, Chance = VP:GetLineCastPosition(target, skills.W.delay, skills.W.width, skills.W.range, skills.W.speed, myHero, false)
-
-					    if Position ~= nil and GetDistance(Position) < skills.W.range and Chance >= 2 then
-					      CastSpell(_W, Position.x, Position.z)
-					    end
-					end
-				end
-
-				if skills.Q.ready and ValidTarget(target, skills.Q.range) and Menu.Jungleclear.useClearQ then
-					CastSpell(_Q, target)
-				end
-
-				if skills.R.ready and ValidTarget(target, skills.E.range) then
-					CastSpell(_R)
-				end
+	for i, jungleMinion in pairs(jungleMinions.objects) do
+		if jungleMinion ~= nil then
+			if Menu.Jungleclear.useClearE and ValidTarget(jungleMinion, skills.E.range) and skills.E.ready then
+				CastSpell(_E, jungleMinion.x, jungleMinion.z)
 			end
 
-			if spiderForm then
-
-				if skills.W.ready and ValidTarget(target, Ranges.AA - 425) and Menu.Jungleclear.useClearW then
-					CastSpell(_W)
-				end
-
-				if skills.Q.ready and ValidTarget(target, skills.Q.range - 125) and Menu.Jungleclear.useClearQ then
-					CastSpell(_Q, target)
-				end
-
+			if Menu.Jungleclear.useClearQ and ValidTarget(jungleMinion, skills.Q.range) and skills.Q.ready then
+				CastSpell(_Q, jungleMinion)
 			end
 
+			if Menu.Jungleclear.useClearW and ValidTarget(jungleMinion, skills.W.range) and skills.W.ready then
+				CastSpell(_W, jungleMinion.x, jungleMinion.z)
+			end
 		end
 	end
 end
@@ -571,6 +442,23 @@ function ItemUsage(target)
 
 end
 
+function OnProcessSpell( unit, spell )
+	if unit.isMe and spell.name:lower():find("attack") then
+		DelayAction(function()
+			waitAA = false
+		end, (spell.windUpTime - (GetLatency() / 2000)))
+	end
+
+end
+
+function animationCancel(unit, spell)
+	if not unit.isMe then return end
+
+	if spell.name == 'BusterShot' then -- _R
+		AnimationCancel[Menu.Ads.cancel]()
+	end
+end
+
 -- Change skin function, made by Shalzuth
 function GenModelPacket(champ, skinId)
 	p = CLoLPacket(0x97)
@@ -596,29 +484,10 @@ function GenModelPacket(champ, skinId)
 	RecvPacket(p)
 end
 
-
-function OnProcessSpell(unit, spell)
-
-	if unit.isMe then
-		if spell.name == 'EliseR' then
-			spiderForm = true
-		elseif spell.name == 'EliseRSpider' then
-			spiderForm = false
-		end
-	end
-
-end
-
-function CastE(unit, pos, spell)
-        if GetDistance(pos) - getHitBoxRadius(unit)/2 < skills.E.range then
-            local willCollide = ProdictECol:GetMinionCollision(pos, myHero)
-            if not willCollide then CastSpell(_E, pos.x, pos.z) end
-        end
-end
-
 function skinChanged()
 	return Menu.Ads.VIP.skin1 ~= lastSkin
 end
+
 
 function OnDraw()
 	
