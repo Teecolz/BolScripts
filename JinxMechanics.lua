@@ -157,7 +157,7 @@ function initComponents()
 	Menu.Ads:addParam("autoSnare", "Auto-Snare if enemy cannot move", SCRIPT_PARAM_ONOFF, false)
 	Menu.Ads:addParam("autoLevel", "Auto-Level Spells", SCRIPT_PARAM_ONOFF, false)
 	Menu.Ads:addSubMenu("Killsteal", "KS")
-	Menu.Ads.KS:addParam("useR", "Use R", SCRIPT_PARAM_ONOFF, false)
+	Menu.Ads.KS:addParam("useR", "Recall Ultimate", SCRIPT_PARAM_ONOFF, false)
 	Menu.Ads.KS:addParam("ignite", "Use Ignite", SCRIPT_PARAM_ONOFF, false)
 	Menu.Ads.KS:addParam("igniteRange", "Minimum range to cast Ignite", SCRIPT_PARAM_SLICE, 470, 0, 600, 0)
 	Menu.Ads:addSubMenu("VIP", "VIP")
@@ -392,9 +392,6 @@ function AutoLevel()
 end
 
 function KillSteal()
-	if Menu.Ads.KS.useR then
-		KSR()
-	end
 	if Menu.Ads.autoSnare then
 		Snare()
 	end
@@ -402,24 +399,6 @@ function KillSteal()
 		IgniteKS()
 	end
 end
-
--- Use Ultimate --
-
-function KSR()
-	for i, target in ipairs(GetEnemyHeroes()) do
-		rDmg = getDmg("R", target, myHero)
-
-		if skills.R.ready and target ~= nil and ValidTarget(target, Ranges.R) and target.health < rDmg then
-			local rPosition, rChance = VP:GetLineCastPosition(target, skills.R.delay, skills.R.width, skills.R.range, skills.R.speed, myHero, true)
-
-		    if rPosition ~= nil and rChance >= 2 then
-		      CastSpell(_R, rPosition.x, rPosition.z)
-		    end
-		end
-	end
-end
-
--- Use Ultimate --
 
 function Snare()
 	for i, target in ipairs(GetEnemyHeroes()) do
@@ -566,6 +545,22 @@ function OnProcessSpell(unit, spell)
         end
     end
 
+end
+
+function OnRecvPacket(p)
+	if Menu.KS.useR then
+		if p.header = 0xD8 then
+			p.pos = 5
+			local idUnit = p.DecodeF(p)
+			local unit = objManager:GetObjectByNetworkId(idUnit)
+
+			rDmg = getDmg("R", unit, myHero)
+
+			if skills.R.ready and unit ~= nil and ValidTarget(unit, Ranges.R) and unit.health < rDmg then
+			    CastSpell(_R, unit.x, unit.z)
+			end
+		end
+	end
 end
 
 
