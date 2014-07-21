@@ -11,7 +11,7 @@
 if myHero.charName ~= "Jinx" then return end
 
 
-local version = 0.40
+local version = 0.41
 local AUTOUPDATE = true
 
 
@@ -351,10 +351,10 @@ function LaneClear()
 			if skills.Q.ready and Menu.Laneclear.useClearQ and ValidTarget(jungleMinion, skills.Q.range) and not ValidTarget(jungleMinion, Ranges.AA) and miniGun then
 				CastSpell(_Q)
 			end
-			if skills.Q.ready and Menu.Menu.Laneclear.useClearQ and ValidTarget(jungleMinion, Ranges.AA) and not miniGun then
+			if skills.Q.ready and Menu.Laneclear.useClearQ and ValidTarget(jungleMinion, Ranges.AA) and not miniGun then
 				CastSpell(_Q)
 			end
-			if skills.W.ready and Menu.Menu.Laneclear.useClearW and ValidTarget(jungleMinion, Ranges.W) then
+			if skills.W.ready and Menu.Laneclear.useClearW and ValidTarget(jungleMinion, Ranges.W) then
 				CastSpell(_W, targetMinion.x, targetMinion.z)
 			end
 		end
