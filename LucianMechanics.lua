@@ -11,7 +11,7 @@
 if myHero.charName ~= "Lucian" then return end
 
 
-local version = 0.1
+local version = 0.2
 local AUTOUPDATE = true
 
 
@@ -306,7 +306,7 @@ function AllInCombo(target, typeCombo)
 						waitAA = true
 					end
 
-					if Menu.LucianCombo.eSet.useE and ValidTarget(target, skills.W.range) and skills.W.ready then
+					if Menu.LucianCombo.wSet.useW and ValidTarget(target, skills.W.range) and skills.W.ready then
 						CastSpell(_W, target.x, target.z)
 						waitAA = true
 					end
@@ -320,7 +320,7 @@ function AllInCombo(target, typeCombo)
 					CastSpell(_Q, target)
 				end
 
-				if Menu.LucianCombo.eSet.useE and ValidTarget(target, skills.W.range) and skills.W.ready then
+				if Menu.LucianCombo.wSet.useW and ValidTarget(target, skills.W.range) and skills.W.ready then
 					CastSpell(_W, target.x, target.z)
 				end
 			end

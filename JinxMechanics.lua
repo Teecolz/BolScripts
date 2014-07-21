@@ -11,7 +11,7 @@
 if myHero.charName ~= "Jinx" then return end
 
 
-local version = 0.35
+local version = 0.40
 local AUTOUPDATE = true
 
 
@@ -45,7 +45,6 @@ require 'VPrediction'
 require 'SOW'
 
 -- Constants --
-local QREADY, WREADY, EREADY, RREADY = false, false, false, false
 local ignite, igniteReady = nil, nil
 local ts = nil
 local VP = nil
@@ -54,10 +53,10 @@ local qOff, wOff, eOff, rOff = 0,0,0,0
 local abilitySequence = {1, 2, 1, 3, 1, 4, 1, 2, 1, 2, 4, 2, 2, 3, 3, 4, 3, 3}
 local Ranges = { AA = 525 }
 local skills = {
-  Q = {spellName = "Switcheroo", range = Ranges.AA + 25, speed = 2000, delay = .25, width = 160},
-  W = {spellName = "Zap", range = 1500, speed = 1600, delay = .25, width = 80},
-  E = {spellName = "Flame Chompers", range = 900, speed = 1600, delay = .25, width = 80},
-  R = {spellName = "Super Mega Death Rocket", range = math.huge, speed = 2000, delay = .50, width = 400},
+  Q = {ready = false, spellName = "Switcheroo", range = Ranges.AA + 25, speed = 2000, delay = .25, width = 160},
+  W = {ready = false, spellName = "Zap", range = 1500, speed = 1600, delay = .25, width = 80},
+  E = {ready = false, spellName = "Flame Chompers", range = 900, speed = 1600, delay = .25, width = 80},
+  R = {ready = false, spellName = "Super Mega Death Rocket", range = math.huge, speed = 2000, delay = .50, width = 400},
 }
 local AnimationCancel =
 {
@@ -69,7 +68,6 @@ local AnimationCancel =
 	[6]=function() end,
 }
 
-local QREADY, WREADY, EREADY, RREADY= false, false, false, false
 local BRKSlot, DFGSlot, HXGSlot, BWCSlot, TMTSlot, RAHSlot, RNDSlot, YGBSlot = nil, nil, nil, nil, nil, nil, nil, nil
 local BRKREADY, DFGREADY, HXGREADY, BWCREADY, TMTREADY, RAHREADY, RNDREADY, YGBREADY = false, false, false, false, false, false, false, false
 
@@ -78,6 +76,25 @@ local lastBasicAttack = 0
 local swingDelay = 0.25
 local swing = false
 local miniGun = true
+
+--[[Misc]]--
+local lastSkin = 0
+local isSAC = false
+local isMMA = false
+local target = nil
+
+--[[ Kill Text ]]--
+TextList = {"Harass him", "W", "ULT HIM !", "W+R", "Skills Not Ready"}
+KillText = {}
+colorText = ARGB(229,229,229,0)
+
+--Credit Trees
+function GetCustomTarget()
+	ts:update()
+	if _G.MMA_Target and _G.MMA_Target.type == myHero.type then return _G.MMA_Target end
+	if _G.AutoCarry and _G.AutoCarry.Crosshair and _G.AutoCarry.Attack_Crosshair and _G.AutoCarry.Attack_Crosshair.target and _G.AutoCarry.Attack_Crosshair.target.type == myHero.type then return _G.AutoCarry.Attack_Crosshair.target end
+	return ts.target
+end
 
 function OnLoad()
 	initComponents()
@@ -93,8 +110,17 @@ function initComponents()
 	
 	Menu = scriptConfig("Jinx Mechanics by Mr Articuno", "JinxMA")
 	
-	Menu:addSubMenu("["..myHero.charName.." - Orbwalker]", "SOWorb")
-	Orbwalker:LoadToMenu(Menu.SOWorb)
+	if _G.MMA_Loaded ~= nil then
+		PrintChat("<font color = \"#33CCCC\">MMA Status:</font> <font color = \"#fff8e7\"> Loaded</font>")
+		isMMA = true
+	elseif _G.AutoCarry ~= nil then
+		PrintChat("<font color = \"#33CCCC\">SAC Status:</font> <font color = \"#fff8e7\"> Loaded</font>")
+		isSAC = true
+	else
+		PrintChat("<font color = \"#33CCCC\">OrbWalker not found:</font> <font color = \"#fff8e7\"> Loading SOW</font>")
+		Menu:addSubMenu("["..myHero.charName.." - Orbwalker]", "SOWorb")
+		Orbwalker:LoadToMenu(Menu.SOWorb)
+	end
 	
 	Menu:addSubMenu("["..myHero.charName.." - Combo]", "JinxCombo")
 	Menu.JinxCombo:addParam("combo", "Combo mode", SCRIPT_PARAM_ONKEYDOWN, false, 32)
@@ -116,17 +142,19 @@ function initComponents()
 	Menu:addSubMenu("["..myHero.charName.." - Laneclear]", "Laneclear")
 	Menu.Laneclear:addParam("lclr", "Laneclear Key", SCRIPT_PARAM_ONKEYDOWN, false, string.byte("V"))
 	Menu.Laneclear:addParam("useClearQ", "Use Q in Laneclear", SCRIPT_PARAM_ONOFF, true)
-	Menu.Laneclear:addParam("useClearE", "Use E in Laneclear", SCRIPT_PARAM_ONOFF, true)
+	Menu.Laneclear:addParam("useClearW", "Use W in Laneclear", SCRIPT_PARAM_ONOFF, true)
 	
 	Menu:addSubMenu("["..myHero.charName.." - Jungleclear]", "Jungleclear")
 	Menu.Jungleclear:addParam("jclr", "Jungleclear Key", SCRIPT_PARAM_ONKEYDOWN, false, string.byte("V"))
 	Menu.Jungleclear:addParam("useClearQ", "Use Q in Jungleclear", SCRIPT_PARAM_ONOFF, true)
-	Menu.Jungleclear:addParam("useClearE", "Use E in Jungleclear", SCRIPT_PARAM_ONOFF, true)
+	Menu.Jungleclear:addParam("useClearW", "Use W in Jungleclear", SCRIPT_PARAM_ONOFF, true)
 	
 	Menu:addSubMenu("["..myHero.charName.." - Additionals]", "Ads")
 	Menu.Ads:addParam("cancel", "Animation Cancel", SCRIPT_PARAM_LIST, 1, { "Move","Laugh","Dance","Taunt","joke","Nothing" })
 	AddProcessSpellCallback(function(unit, spell)
 	end)
+	Menu.Ads:addParam("antiGapCloser", "Anti Gap Closer", SCRIPT_PARAM_ONOFF, false)
+	Menu.Ads:addParam("autoSnare", "Auto-Snare if enemy cannot move", SCRIPT_PARAM_ONOFF, false)
 	Menu.Ads:addParam("autoLevel", "Auto-Level Spells", SCRIPT_PARAM_ONOFF, false)
 	Menu.Ads:addSubMenu("Killsteal", "KS")
 	Menu.Ads.KS:addParam("useR", "Use R", SCRIPT_PARAM_ONOFF, false)
@@ -143,12 +171,13 @@ function initComponents()
 	
 	Menu:addSubMenu("["..myHero.charName.." - Drawings]", "drawings")
 	local DManager = DrawManager()
+	Menu.drawings:addParam("text", "Draw Texts", SCRIPT_PARAM_ONOFF, true)
 	DManager:CreateCircle(myHero, Ranges.AA, 1, {255, 0, 255, 0}):AddToMenu(Menu.drawings,"AA range", true, true, true)
 	DManager:CreateCircle(myHero, skills.Q.range, 1, {255, 0, 255, 0}):AddToMenu(Menu.drawings,"Q range", true, true, true)
 	DManager:CreateCircle(myHero, skills.W.range, 1, {255, 0, 255, 0}):AddToMenu(Menu.drawings,"W range", true, true, true)
 	DManager:CreateCircle(myHero, skills.E.range, 1, {255, 0, 255, 0}):AddToMenu(Menu.drawings,"E range", true, true, true)
 	
-	enemyMinions = minionManager(MINION_ENEMY, 360, myHero, MINION_SORT_MAXHEALTH_DEC)
+	targetMinions = minionManager(MINION_ENEMY, 360, myHero, MINION_SORT_MAXHEALTH_DEC)
 	allyMinions = minionManager(MINION_ALLY, 360, myHero, MINION_SORT_MAXHEALTH_DEC)
 	jungleMinions = minionManager(MINION_JUNGLE, 360, myHero, MINION_SORT_MAXHEALTH_DEC)
 	
@@ -160,18 +189,14 @@ function initComponents()
 end
 
 function OnTick()
-	ts:update()
-	enemyMinions:update()
+	target = GetCustomTarget()
+	targetMinions:update()
 	allyMinions:update()
 	jungleMinions:update()
 	CDHandler()
 	KillSteal()
 
 	DFGSlot, HXGSlot, BWCSlot, SheenSlot, TrinitySlot, LichBaneSlot, BRKSlot, TMTSlot, RAHSlot, RNDSlot, STDSlot = GetInventorySlotItem(3128), GetInventorySlotItem(3146), GetInventorySlotItem(3144), GetInventorySlotItem(3057), GetInventorySlotItem(3078), GetInventorySlotItem(3100), GetInventorySlotItem(3153), GetInventorySlotItem(3077), GetInventorySlotItem(3074), GetInventorySlotItem(3143), GetInventorySlotItem(3131)
-	QREADY = (myHero:CanUseSpell(_Q) == READY)
-	WREADY = (myHero:CanUseSpell(_W) == READY)
-	EREADY = (myHero:CanUseSpell(_E) == READY)
-	RREADY = (myHero:CanUseSpell(_R) == READY)
 	DFGREADY = (DFGSlot ~= nil and myHero:CanUseSpell(DFGSlot) == READY)
 	HXGREADY = (HXGSlot ~= nil and myHero:CanUseSpell(HXGSlot) == READY)
 	BWCREADY = (BWCSlot ~= nil and myHero:CanUseSpell(BWCSlot) == READY)
@@ -206,17 +231,18 @@ end
 
 function CDHandler()
 	-- Spells
-	QREADY = (myHero:CanUseSpell(_Q) == READY)
-	WREADY = (myHero:CanUseSpell(_W) == READY)
-	EREADY = (myHero:CanUseSpell(_E) == READY)
-	RREADY = (myHero:CanUseSpell(_R) == READY)
+	skills.Q.ready = (myHero:CanUseSpell(_Q) == READY)
+	skills.W.ready = (myHero:CanUseSpell(_W) == READY)
+	skills.E.ready = (myHero:CanUseSpell(_E) == READY)
+	skills.R.ready = (myHero:CanUseSpell(_R) == READY)
 	-- Items
 	tiamatSlot = GetInventorySlotItem(3077)
 	hydraSlot = GetInventorySlotItem(3074)
 	youmuuSlot = GetInventorySlotItem(3142) 
 	bilgeSlot = GetInventorySlotItem(3144)
 	bladeSlot = GetInventorySlotItem(3153)
-	
+	DamageCalculation()
+
 	tiamatReady = (tiamatSlot ~= nil and myHero:CanUseSpell(tiamatSlot) == READY)
 	hydraReady = (hydraSlot ~= nil and myHero:CanUseSpell(hydraSlot) == READY)
 	youmuuReady = (youmuuSlot ~= nil and myHero:CanUseSpell(youmuuSlot) == READY)
@@ -237,19 +263,26 @@ end
 -- Harass --
 
 function Harass()
-	local enemy = ts.target
 	
-	if enemy ~= nil and ValidTarget(enemy) then
-		if Menu.Harass.useW and ValidTarget(enemy, Ranges.W) and WREADY then
-			CastSpell(_W, enemy)
+	if target ~= nil and ValidTarget(target) then
+		if Menu.Harass.useE and ValidTarget(target, skills.E.range) and skills.E.ready then
+			local ePosition, eChance = VP:GetCircularCastPosition(target, skills.E.delay, skills.E.width, skills.E.range, skills.E.speed, myHero, false)
+
+		    if ePosition ~= nil and GetDistance(ePosition) < skills.E.range and eChance >= 2 then
+		      CastSpell(_E, ePosition.x, ePosition.z)
+		    end
 		end
-		if Menu.Harass.useE and ValidTarget(enemy, Ranges.E + Ranges.AA) and EREADY then
-			CastSpell(_E, enemy)
+		if skills.W.ready and Menu.Harass.useW and ValidTarget(target, skills.W.range) then
+			local wPosition, wChance = VP:GetLineCastPosition(target, skills.W.delay, skills.W.width, skills.W.range, skills.W.speed, myHero, true)
+
+		    if wPosition ~= nil and GetDistance(wPosition) < skills.W.range and wChance >= 2 then
+		      CastSpell(_W, wPosition.x, wPosition.z)
+		    end
 		end
-		if QREADY and Menu.Harass.useQ and ValidTarget(enemy, skills.Q.range) and not ValidTarget(enemy, Ranges.AA) and miniGun then
+		if skills.Q.ready and Menu.Harass.useQ and ValidTarget(target, skills.Q.range) and not ValidTarget(target, Ranges.AA) and miniGun then
 			CastSpell(_Q)
 		end
-		if QREADY and Menu.Harass.useQ and ValidTarget(enemy, Ranges.AA) and not miniGun then
+		if skills.Q.ready and Menu.Harass.useQ and ValidTarget(target, Ranges.AA) and not miniGun then
 			CastSpell(_Q)
 		end
 	end
@@ -263,8 +296,8 @@ end
 
 function Combo()
 	local typeCombo = 0
-	if ts.target ~= nil then
-		AllInCombo(ts.target, 0)
+	if target ~= nil then
+		AllInCombo(0)
 	end
 	
 end
@@ -273,12 +306,12 @@ end
 
 -- All In Combo -- 
 
-function AllInCombo(target, typeCombo)
+function AllInCombo(typeCombo)
 	if target ~= nil and typeCombo == 0 then
-		if RREADY and Menu.JinxCombo.rSet.useR and ValidTarget(target, 3500) then
+		if skills.R.ready and Menu.JinxCombo.rSet.useR and ValidTarget(target, 3500) then
 			rDmg = getDmg("R", target, myHero)
 
-			if RREADY and target ~= nil and ValidTarget(target, Ranges.R) and target.health < rDmg then
+			if skills.R.ready and target ~= nil and ValidTarget(target, Ranges.R) and target.health < rDmg then
 				local rPosition, rChance = VP:GetLineCastPosition(target, skills.R.delay, skills.R.width, skills.R.range, skills.R.speed, myHero, false)
 
 			    if rPosition ~= nil and rChance >= 2 then
@@ -286,24 +319,24 @@ function AllInCombo(target, typeCombo)
 			    end
 			end
 		end
-		if Menu.JinxCombo.eSet.useE and ValidTarget(target, skills.E.range) and EREADY then
+		if Menu.JinxCombo.eSet.useE and ValidTarget(target, skills.E.range) and skills.E.ready then
 			local ePosition, eChance = VP:GetCircularCastPosition(target, skills.E.delay, skills.E.width, skills.E.range, skills.E.speed, myHero, false)
 
 		    if ePosition ~= nil and GetDistance(ePosition) < skills.E.range and eChance >= 2 then
 		      CastSpell(_E, ePosition.x, ePosition.z)
 		    end
 		end
-		if WREADY and Menu.JinxCombo.wSet.useW and ValidTarget(target, skills.W.range) then
+		if skills.W.ready and Menu.JinxCombo.wSet.useW and ValidTarget(target, skills.W.range) then
 			local wPosition, wChance = VP:GetLineCastPosition(target, skills.W.delay, skills.W.width, skills.W.range, skills.W.speed, myHero, true)
 
 		    if wPosition ~= nil and GetDistance(wPosition) < skills.W.range and wChance >= 2 then
 		      CastSpell(_W, wPosition.x, wPosition.z)
 		    end
 		end
-		if QREADY and Menu.JinxCombo.qSet.useQ and ValidTarget(target, skills.Q.range) and not ValidTarget(target, Ranges.AA) and miniGun then
+		if skills.Q.ready and Menu.JinxCombo.qSet.useQ and ValidTarget(target, skills.Q.range) and not ValidTarget(target, Ranges.AA) and miniGun then
 			CastSpell(_Q)
 		end
-		if QREADY and Menu.JinxCombo.qSet.useQ and ValidTarget(target, Ranges.AA) and not miniGun then
+		if skills.Q.ready and Menu.JinxCombo.qSet.useQ and ValidTarget(target, Ranges.AA) and not miniGun then
 			CastSpell(_Q)
 		end
 	end
@@ -313,16 +346,16 @@ end
 
 
 function LaneClear()
-	for i, enemyMinion in pairs(enemyMinions.objects) do
-		if enemyMinion ~= nil then
-			if QREADY and Menu.Laneclear.useClearQ and ValidTarget(jungleMinion, skills.Q.range) and not ValidTarget(jungleMinion, Ranges.AA) and miniGun then
+	for i, targetMinion in pairs(targetMinions.objects) do
+		if targetMinion ~= nil then
+			if skills.Q.ready and Menu.Laneclear.useClearQ and ValidTarget(jungleMinion, skills.Q.range) and not ValidTarget(jungleMinion, Ranges.AA) and miniGun then
 				CastSpell(_Q)
 			end
-			if QREADY and Menu.Menu.Laneclear.useClearQ and ValidTarget(jungleMinion, Ranges.AA) and not miniGun then
+			if skills.Q.ready and Menu.Menu.Laneclear.useClearQ and ValidTarget(jungleMinion, Ranges.AA) and not miniGun then
 				CastSpell(_Q)
 			end
-			if EREADY and Menu.Menu.Laneclear.useClearE and ValidTarget(jungleMinion, Ranges.E) then
-				CastSpell(_E, enemyMinion.x, enemyMinion.z)
+			if skills.W.ready and Menu.Menu.Laneclear.useClearW and ValidTarget(jungleMinion, Ranges.W) then
+				CastSpell(_W, targetMinion.x, targetMinion.z)
 			end
 		end
 	end
@@ -331,14 +364,14 @@ end
 function JungleClear()
 	for i, jungleMinion in pairs(jungleMinions.objects) do
 		if jungleMinion ~= nil then
-			if QREADY and Menu.Jungleclear.useClearQ and ValidTarget(jungleMinion, skills.Q.range) and not ValidTarget(jungleMinion, Ranges.AA) and miniGun then
+			if skills.Q.ready and Menu.Jungleclear.useClearQ and ValidTarget(jungleMinion, skills.Q.range) and not ValidTarget(jungleMinion, Ranges.AA) and miniGun then
 				CastSpell(_Q)
 			end
-			if QREADY and Menu.Jungleclear.useClearQ and ValidTarget(jungleMinion, Ranges.AA) and not miniGun then
+			if skills.Q.ready and Menu.Jungleclear.useClearQ and ValidTarget(jungleMinion, Ranges.AA) and not miniGun then
 				CastSpell(_Q)
 			end
-			if EREADY and Menu.Jungleclear.useClearE and ValidTarget(jungleMinion, skills.E.range) then
-				CastSpell(_E, enemyMinion.x, enemyMinion.z)
+			if skills.W.ready and Menu.Jungleclear.useClearW and ValidTarget(jungleMinion, skills.W.range) then
+				CastSpell(_W, targetMinion.x, targetMinion.z)
 			end
 		end
 	end
@@ -362,6 +395,9 @@ function KillSteal()
 	if Menu.Ads.KS.useR then
 		KSR()
 	end
+	if Menu.Ads.autoSnare then
+		Snare()
+	end
 	if Menu.Ads.KS.ignite then
 		IgniteKS()
 	end
@@ -370,11 +406,11 @@ end
 -- Use Ultimate --
 
 function KSR()
-	for i, enemy in ipairs(GetEnemyHeroes()) do
-		rDmg = getDmg("R", enemy, myHero)
+	for i, target in ipairs(GetEnemyHeroes()) do
+		rDmg = getDmg("R", target, myHero)
 
-		if RREADY and enemy ~= nil and ValidTarget(enemy, Ranges.R) and enemy.health < rDmg then
-			local rPosition, rChance = VP:GetLineCastPosition(enemy, skills.R.delay, skills.R.width, skills.R.range, skills.R.speed, myHero, true)
+		if skills.R.ready and target ~= nil and ValidTarget(target, Ranges.R) and target.health < rDmg then
+			local rPosition, rChance = VP:GetLineCastPosition(target, skills.R.delay, skills.R.width, skills.R.range, skills.R.speed, myHero, true)
 
 		    if rPosition ~= nil and rChance >= 2 then
 		      CastSpell(_R, rPosition.x, rPosition.z)
@@ -384,6 +420,18 @@ function KSR()
 end
 
 -- Use Ultimate --
+
+function Snare()
+	for i, target in ipairs(GetEnemyHeroes()) do
+		if not target.canMove or target.isTaunted or target.isCharmed or target.isFeared then
+			local ePosition, eChance = VP:GetCircularCastPosition(target, skills.E.delay, skills.E.width, skills.E.range, skills.E.speed, myHero, false)
+
+		    if ePosition ~= nil and GetDistance(ePosition) < skills.E.range and eChance >= 2 then
+		      CastSpell(_E, ePosition.x, ePosition.z)
+		    end
+		end
+	end
+end
 
 -- Auto Ignite get the maximum range to avoid over kill --
 
@@ -460,6 +508,107 @@ function GenModelPacket(champ, skinId)
 	RecvPacket(p)
 end
 
+-- Credit Manciuszz
+function OnProcessSpell(unit, spell)
+    if not Menu.Ads.antiGapCloser then return end
+
+    local jarvanAddition = unit.charName == "JarvanIV" and unit:CanUseSpell(_Q) ~= READY and _R or _Q 
+    local isAGapcloserUnit = {
+        ['Aatrox']      = {true, spell = _Q,                  range = 1000,  projSpeed = 1200, },
+        ['Akali']       = {true, spell = _R,                  range = 800,   projSpeed = 2200, }, -- Targeted ability
+        ['Alistar']     = {true, spell = _W,                  range = 650,   projSpeed = 2000, }, -- Targeted ability
+        ['Diana']       = {true, spell = _R,                  range = 825,   projSpeed = 2000, }, -- Targeted ability
+        ['Gragas']      = {true, spell = _E,                  range = 600,   projSpeed = 2000, },
+        ['Graves']      = {true, spell = _E,                  range = 425,   projSpeed = 2000, exeption = true },
+        ['Hecarim']     = {true, spell = _R,                  range = 1000,  projSpeed = 1200, },
+        ['Irelia']      = {true, spell = _Q,                  range = 650,   projSpeed = 2200, }, -- Targeted ability
+        ['JarvanIV']    = {true, spell = jarvanAddition,      range = 770,   projSpeed = 2000, }, -- Skillshot/Targeted ability
+        ['Jax']         = {true, spell = _Q,                  range = 700,   projSpeed = 2000, }, -- Targeted ability
+        ['Jayce']       = {true, spell = 'JayceToTheSkies',   range = 600,   projSpeed = 2000, }, -- Targeted ability
+        ['Khazix']      = {true, spell = _E,                  range = 900,   projSpeed = 2000, },
+        ['Leblanc']     = {true, spell = _W,                  range = 600,   projSpeed = 2000, },
+        ['LeeSin']      = {true, spell = 'blindmonkqtwo',     range = 1300,  projSpeed = 1800, },
+        ['Leona']       = {true, spell = _E,                  range = 900,   projSpeed = 2000, },
+        ['Malphite']    = {true, spell = _R,                  range = 1000,  projSpeed = 1500 + unit.ms},
+        ['Maokai']      = {true, spell = _Q,                  range = 600,   projSpeed = 1200, }, -- Targeted ability
+        ['MonkeyKing']  = {true, spell = _E,                  range = 650,   projSpeed = 2200, }, -- Targeted ability
+        ['Pantheon']    = {true, spell = _W,                  range = 600,   projSpeed = 2000, }, -- Targeted ability
+        ['Poppy']       = {true, spell = _E,                  range = 525,   projSpeed = 2000, }, -- Targeted ability
+        ['Renekton']    = {true, spell = _E,                  range = 450,   projSpeed = 2000, },
+        ['Sejuani']     = {true, spell = _Q,                  range = 650,   projSpeed = 2000, },
+        ['Shen']        = {true, spell = _E,                  range = 575,   projSpeed = 2000, },
+        ['Tristana']    = {true, spell = _W,                  range = 900,   projSpeed = 2000, },
+        ['Tryndamere']  = {true, spell = 'Slash',             range = 650,   projSpeed = 1450, },
+        ['XinZhao']     = {true, spell = _E,                  range = 650,   projSpeed = 2000, }, -- Targeted ability
+    }
+    if unit.type == 'obj_AI_Hero' and unit.team == TEAM_ENEMY and isAGapcloserUnit[unit.charName] and GetDistance(unit) < 2000 and spell ~= nil then
+        if spell.name == (type(isAGapcloserUnit[unit.charName].spell) == 'number' and unit:GetSpellData(isAGapcloserUnit[unit.charName].spell).name or isAGapcloserUnit[unit.charName].spell) then
+            if spell.target ~= nil and spell.target.name == myHero.name or isAGapcloserUnit[unit.charName].spell == 'blindmonkqtwo' then
+                if ValidTarget(spell.target, skills.E.range) and skills.E.ready then
+					local ePosition, eChance = VP:GetCircularCastPosition(spell.target, skills.E.delay, skills.E.width, skills.E.range, skills.E.speed, myHero, false)
+
+				    if ePosition ~= nil and GetDistance(ePosition) < skills.E.range and eChance >= 2 then
+				      CastSpell(_E, ePosition.x, ePosition.z)
+				    end
+				end
+            else
+                spellExpired = false
+                informationTable = {
+                    spellSource = unit,
+                    spellCastedTick = GetTickCount(),
+                    spellStartPos = Point(spell.startPos.x, spell.startPos.z),
+                    spellEndPos = Point(spell.endPos.x, spell.endPos.z),
+                    spellRange = isAGapcloserUnit[unit.charName].range,
+                    spellSpeed = isAGapcloserUnit[unit.charName].projSpeed,
+                    spellIsAnExpetion = isAGapcloserUnit[unit.charName].exeption or false,
+                }
+            end
+        end
+    end
+
+end
+
+
 function OnDraw()
-	
+	if Menu.drawings.text then
+		for i = 1, heroManager.iCount do
+		local enemy = heroManager:GetHero(i)
+		if ValidTarget(enemy) and enemy ~= nil then
+			local barPos = WorldToScreen(D3DXVECTOR3(enemy.x, enemy.y, enemy.z)) --(Credit to Zikkah)
+			local PosX = barPos.x - 35
+			local PosY = barPos.y - 10
+			if KillText[i] ~= 10 then
+				DrawText(TextList[KillText[i]], 16, PosX, PosY, colorText)
+			else
+				DrawText(TextList[KillText[i]] .. string.format("%4.1f", ((enemy.health - (qDmg + pDmg + eDmg + itemsDmg)) * (1/rDmg)) * 2.5) .. "s = Kill", 16, PosX, PosY, colorText)
+			end
+		end
+	end
+	end
+end
+
+-- Damage Calculation Thanks Skeem for the base --
+
+function DamageCalculation()
+
+	for i=1, heroManager.iCount do
+		local enemy = heroManager:GetHero(i)
+		if ValidTarget(enemy) and enemy ~= nil then
+			
+			wDmg = getDmg("E",enemy,myHero)
+			rDmg = getDmg("R",enemy,myHero)
+
+			if not skills.W.ready and not skills.R.ready then
+				KillText[i] = 9
+			elseif enemy.health <= wDmg then
+				KillText[i] = 2
+			elseif enemy.health <= rDmg then
+				KillText[i] = 3
+			elseif enemy.health <= wDmg + rDmg then
+				KillText[i] = 4
+			else
+				KillText[i] = 1
+			end
+		end
+	end
 end
