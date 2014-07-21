@@ -11,7 +11,7 @@
 if myHero.charName ~= "Gragas" then return end
 
 
-local version = 0.45
+local version = 0.46
 local AUTOUPDATE = true
 
 
@@ -187,6 +187,7 @@ function initComponents()
 	end
 	
 	PrintChat("<font color = \"#33CCCC\">Gragas Mechanics by</font> <font color = \"#fff8e7\">Mr Articuno</font>")
+	PrintChat("<font color = \"#4693e0\">Sponsored by www.RefsPlea.se</font> <font color = \"#d6ebff\"> - A League of Legends Referrals service. Get RP cheaper!</font>")
 end
 
 function OnTick()

@@ -23,7 +23,7 @@ R Logic;
 if myHero.charName ~= "Viktor" or not VIP_USER then return end
 
 
-local version = 0.1
+local version = 0.2
 local AUTOUPDATE = true
 
 
@@ -210,6 +210,7 @@ function initComponents()
 	end
 	
 	PrintChat("<font color = \"#33CCCC\">Viktor Mechanics by</font> <font color = \"#fff8e7\">Mr Articuno V"..version.."</font>")
+	PrintChat("<font color = \"#4693e0\">Sponsored by www.RefsPlea.se</font> <font color = \"#d6ebff\"> - A League of Legends Referrals service. Get RP cheaper!</font>")
 
 end
 
