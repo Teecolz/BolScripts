@@ -20,10 +20,10 @@ R Logic;
 
 ]]
 
-if myHero.charName ~= "Chogath" or not VIP_USER then return end
+if myHero.charName ~= "Chogath" then return end
 
 
-local version = 0.1
+local version = 0.2
 local AUTOUPDATE = true
 
 
