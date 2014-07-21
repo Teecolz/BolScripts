@@ -11,7 +11,7 @@
 if myHero.charName ~= "Elise" then return end
 
 
-local version = 0.2
+local version = 0.3
 local AUTOUPDATE = true
 
 
@@ -83,6 +83,7 @@ local isSAC = false
 local isMMA = false
 local target = nil
 local spiderForm = false
+local focusTarget = nil
 
 -- [[ VIP Variables]] --
 local Prodict
@@ -92,6 +93,7 @@ local ProdictE, ProdictECol
 --Credit Trees
 function GetCustomTarget()
 	ts:update()
+	if focusTarget ~= nil and not focusTarget.dead and Menu.targetSelector.focusPriority then return focusTarget end
 	if _G.MMA_Target and _G.MMA_Target.type == myHero.type then return _G.MMA_Target end
 	if _G.AutoCarry and _G.AutoCarry.Crosshair and _G.AutoCarry.Attack_Crosshair and _G.AutoCarry.Attack_Crosshair.target and _G.AutoCarry.Attack_Crosshair.target.type == myHero.type then return _G.AutoCarry.Attack_Crosshair.target end
 	return ts.target
@@ -166,6 +168,7 @@ function initComponents()
 	Menu:addSubMenu("["..myHero.charName.." - Target Selector]", "targetSelector")
 	Menu.targetSelector:addTS(ts)
 	ts.name = "Focus"
+	Menu.targetSelector:addParam("focusPriority", "Force Combo Selected Target", SCRIPT_PARAM_ONOFF, false)
 	
 	Menu:addSubMenu("["..myHero.charName.." - Drawings]", "drawings")
 	local DManager = DrawManager()
@@ -202,6 +205,21 @@ function OnTick()
 	jungleMinions:update()
 	CDHandler()
 	KillSteal()
+
+	 if myHero.dead then
+        return
+    end
+       
+    if not myHero.canMove then
+        return
+    end
+
+     local focus = GetTarget()
+        if focus ~= nil then
+            if string.find(focus.type, "Hero") and focus.team ~= myHero.team then
+                focusTarget = focus
+            end
+        end
 
 	if Menu.Ads.VIP.skin and VIP_USER and skinChanged() then
 		GenModelPacket("Elise", Menu.Ads.VIP.skin1)
@@ -349,7 +367,10 @@ function AllInCombo(target, typeCombo)
 		if not spiderForm then
 			if skills.E.ready and ValidTarget(target, skills.E.range) and Menu.EliseCombo.eSet.useE then
 				if VIP_USER and Menu.Ads.VIP.prodiction then
-					ProdictE:GetPredictionCallBack(target, CastE)
+					local pos, info = Prodiction.GetPrediction(target, skills.E.range, skills.E.speed, skills.E.delay, skills.E.width)
+					if info.hitchance > 2 then 
+						CastSpell(_E, pos.x, pos.z)
+					end
 				else
 					local ePosition, eChance = VP:GetLineCastPosition(target, skills.E.delay, skills.E.width, skills.E.range, skills.E.speed, myHero, true)
 
@@ -362,7 +383,7 @@ function AllInCombo(target, typeCombo)
 			if skills.W.ready and ValidTarget(target, skills.W.range) and Menu.EliseCombo.wSet.useW then
 				if VIP_USER and Menu.Ads.VIP.prodiction then
 					local pos, info = Prodiction.GetPrediction(target, skills.W.range, skills.W.speed, skills.W.delay, skills.W.width)
-					if pos then 
+					if info.hitchance >= 2 then 
 						CastSpell(_W, pos.x, pos.z)
 					end
 				else
