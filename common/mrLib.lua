@@ -1,24 +1,16 @@
 --[[
-		           __    _ _      _____        _____        _____     _   _                 
-		 _____ ___|  |  |_| |_   | __  |_ _   |     |___   |  _  |___| |_|_|___ _ _ ___ ___ 
-		|     |  _|  |__| | . |  | __ -| | |  | | | |  _|  |     |  _|  _| |  _| | |   | . |
-		|_|_|_|_| |_____|_|___|  |_____|_  |  |_|_|_|_|    |__|__|_| |_| |_|___|___|_|_|___|
-		                               |___|                                                
+
+   _____             _____          __  .__                            
+  /     \_______    /  _  \________/  |_|__| ____  __ __  ____   ____  
+ /  \ /  \_  __ \  /  /_\  \_  __ \   __\  |/ ___\|  |  \/    \ /  _ \ 
+/    Y    \  | \/ /    |    \  | \/|  | |  \  \___|  |  /   |  (  <_> )
+\____|__  /__|    \____|__  /__|   |__| |__|\___  >____/|___|  /\____/ 
+        \/                \/                    \/           \/        
 
 ]]
 
---[[
 
-		_________                        __    _________ .__                        
-		\_   ___ \_______ ___.__._______/  |_  \_   ___ \|  | _____    ______ ______
-		/    \  \/\_  __ <   |  |\____ \   __\ /    \  \/|  | \__  \  /  ___//  ___/
-		\     \____|  | \/\___  ||  |_> >  |   \     \___|  |__/ __ \_\___ \ \___ \ 
-		 \______  /|__|   / ____||   __/|__|    \______  /____(____  /____  >____  >
-		        \/        \/     |__|                  \/          \/     \/     \/ 
-
-]]
-
-local hashKey = {1,2,3,4,0} -- You can use your own Hash key
+local hashKey = {124,532,123,22,20};
 
 local function convert(chars,dist,inv)
   local charInt = string.byte(chars);
@@ -53,26 +45,13 @@ local function crypt(str,k,inv)
   return enc;
 end
 
-function encodeScript(str)
-  return crypt(str,hashKey)
+function encodeScript(str,key)
+  return crypt(str,key)
 end
 
-function decodeScript(str)
-  return crypt(str,hashKey,true)
+function decodeScript(str,key)
+  return crypt(str,key,true)
 end
-
---[[
-	
-		.___________    _________ .__                        
-		|   \_____  \   \_   ___ \|  | _____    ______ ______
-		|   |/   |   \  /    \  \/|  | \__  \  /  ___//  ___/
-		|   /    |    \ \     \___|  |__/ __ \_\___ \ \___ \ 
-		|___\_______  /  \______  /____(____  /____  >____  >
-		            \/          \/          \/     \/     \/ 
-
-]]
-
-local io = require "io"
 
 function file_exists(file)
   local f = io.open(file, "rb")
@@ -102,50 +81,16 @@ end
 function makeFile(fileName, str)
 
   file = io.open(fileName, "w")
-  file:write(str)
+  file:write(encodeScript(str,hashKey))
   file:close()
   
 end
 
-function loadFromWeb(arquivo, host, versionLink, keepFile)
-	makeFile(arquivo, TCPConnection:TCPLoadUrl(host, versionLink))
- 	loadfile(arquivo)()
-	if not keepFile then
-		DeleteFile(arquivo)
-	end
-end
+function tcpParser(url)
 
-function downloadLib(arquivo, host, versionLink)
-	makeFile(arquivo, TCPConnection:TCPLoadUrl(host, versionLink))
-end
-
-
---[[
-
-		______________________________  _________ .____       _____    _________ _________
-		\__    ___/\_   ___ \______   \ \_   ___ \|    |     /  _  \  /   _____//   _____/
-		  |    |   /    \  \/|     ___/ /    \  \/|    |    /  /_\  \ \_____  \ \_____  \ 
-		  |    |   \     \___|    |     \     \___|    |___/    |    \/        \/        \
-		  |____|    \______  /____|      \______  /_______ \____|__  /_______  /_______  /
-		                   \/                   \/        \/       \/        \/        \/ 
-	By Mr Articuno
-
-	Special Thanks to Superx321
-]]
-
-class "TCPConnection"
-	local LuaSocket = require("socket")
-	_G.TCPConnection = {}
-	_G.TCPConnected = true
-	_G.TCPUrl = "mrarticuno.url.ph"
-	_G.TCPPort = 80
-
-function TCPConnection:TCPLoadUrl(host, versionLink)
-	local socket = require "socket"
-	local client = socket.connect(TCPUrl,TCPPort)
-	client:send("GET /getRaw.php?url="..host..versionLink.." HTTP/1.0\r\nHost: mrarticuno.url.ph\r\n\r\n")
-	if client then
-		local s, status, partial = client:receive('*a')
-		return string.sub(s, string.find(s, "<bols".."cript>")+11, string.find(s, "</bols".."cript>")-1)
-	end
+  local http = require("socket.http")
+  local page = http.request(url)
+  
+  return page
+  
 end
