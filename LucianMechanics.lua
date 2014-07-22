@@ -12,34 +12,6 @@ if myHero.charName ~= "Lucian" then return end
 
 
 local version = 0.21
-local AUTOUPDATE = true
-
-
-local SCRIPT_NAME = "LucianMechanics"
-local SOURCELIB_URL = "https://raw.github.com/TheRealSource/public/master/common/SourceLib.lua"
-local SOURCELIB_PATH = LIB_PATH.."SourceLib.lua"
-if FileExist(SOURCELIB_PATH) then
-	require("SourceLib")
-else
-	DOWNLOADING_SOURCELIB = true
-	DownloadFile(SOURCELIB_URL, SOURCELIB_PATH, function() print("Required libraries downloaded successfully, please reload") end)
-end
-
-if DOWNLOADING_SOURCELIB then print("Downloading required libraries, please wait...") return end
-
-if AUTOUPDATE then
-	SourceUpdater(SCRIPT_NAME, version, "raw.github.com", "/gmlyra/BolScripts/master/"..SCRIPT_NAME..".lua", SCRIPT_PATH .. GetCurrentEnv().FILE_NAME, "/gmlyra/BolScripts/master/VersionFiles/"..SCRIPT_NAME..".version"):CheckUpdate()
-end
-
-local RequireI = Require("SourceLib")
-RequireI:Add("vPrediction", "https://raw.github.com/Hellsing/BoL/master/common/VPrediction.lua")
-RequireI:Add("SOW", "https://raw.github.com/Hellsing/BoL/master/common/SOW.lua")
---RequireI:Add("mrLib", "https://raw.githubusercontent.com/gmlyra/BolScripts/master/common/mrLib.lua")
-
-RequireI:Check()
-
-if RequireI.downloadNeeded == true then return end
-
 
 require 'VPrediction'
 require 'SOW'
@@ -92,6 +64,8 @@ function GetCustomTarget()
 end
 
 function OnLoad()
+	if _G.ScriptLoaded then	return end
+	_G.ScriptLoaded = true
 	initComponents()
 end
 
