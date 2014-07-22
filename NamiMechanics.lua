@@ -8,10 +8,37 @@
 
 ]]
 
-if myHero.charName ~= "Tristana" then return end
+if myHero.charName ~= "Nami" then return end
 
 
-local version = 0.62
+local version = 0.1
+local AUTOUPDATE = true
+
+
+local SCRIPT_NAME = "NamiMechanics"
+local SOURCELIB_URL = "https://raw.github.com/TheRealSource/public/master/common/SourceLib.lua"
+local SOURCELIB_PATH = LIB_PATH.."SourceLib.lua"
+if FileExist(SOURCELIB_PATH) then
+	require("SourceLib")
+else
+	DOWNLOADING_SOURCELIB = true
+	DownloadFile(SOURCELIB_URL, SOURCELIB_PATH, function() print("Required libraries downloaded successfully, please reload") end)
+end
+
+if DOWNLOADING_SOURCELIB then print("Downloading required libraries, please wait...") return end
+
+if AUTOUPDATE then
+	SourceUpdater(SCRIPT_NAME, version, "raw.github.com", "/gmlyra/BolScripts/master/"..SCRIPT_NAME..".lua", SCRIPT_PATH .. GetCurrentEnv().FILE_NAME, "/gmlyra/BolScripts/master/VersionFiles/"..SCRIPT_NAME..".version"):CheckUpdate()
+end
+
+local RequireI = Require("SourceLib")
+RequireI:Add("vPrediction", "https://raw.github.com/Hellsing/BoL/master/common/VPrediction.lua")
+RequireI:Add("SOW", "https://raw.github.com/Hellsing/BoL/master/common/SOW.lua")
+--RequireI:Add("mrLib", "https://raw.githubusercontent.com/gmlyra/BolScripts/master/common/mrLib.lua")
+
+RequireI:Check()
+
+if RequireI.downloadNeeded == true then return end
 
 
 require 'VPrediction'
@@ -26,10 +53,10 @@ local qOff, wOff, eOff, rOff = 0,0,0,0
 local abilitySequence = {3, 2, 3, 1, 4, 1, 1, 1, 1, 3, 4, 2, 2, 2, 2, 4, 3, 3}
 local Ranges = { AA = 550 }
 local skills = {
-    SkillQ = { ready = false, name = myHero:GetSpellData(_Q).name, range = Ranges.AA, delay = myHero:GetSpellData(_Q).delayTotalTimePercent, speed = myHero:GetSpellData(_Q).missileSpeed, width = myHero:GetSpellData(_Q).lineWidth },
-	SkillW = { ready = false, name = myHero:GetSpellData(_W).name, range = myHero:GetSpellData(_W).range, delay = myHero:GetSpellData(_W).delayTotalTimePercent, speed = myHero:GetSpellData(_W).missileSpeed, width = myHero:GetSpellData(_W).lineWidth },
-	SkillE = { ready = false, name = myHero:GetSpellData(_E).name, range = Ranges.AA, delay = myHero:GetSpellData(_E).delayTotalTimePercent, speed = myHero:GetSpellData(_E).missileSpeed, width = myHero:GetSpellData(_E).lineWidth },
-	SkillR = { ready = false, name = myHero:GetSpellData(_R).name, range = Ranges.AA, delay = myHero:GetSpellData(_R).delayTotalTimePercent, speed = myHero:GetSpellData(_R).missileSpeed, width = myHero:GetSpellData(_R).lineWidth },
+    Q = { ready = false, name = myHero:GetSpellData(_Q).name, range = 875, delay = 0.5, speed = 1750, width = 250 },
+	W = { ready = false, name = myHero:GetSpellData(_W).name, range = 725, delay = myHero:GetSpellData(_W).delayTotalTimePercent, speed = myHero:GetSpellData(_W).missileSpeed, width = myHero:GetSpellData(_W).lineWidth },
+	E = { ready = false, name = myHero:GetSpellData(_E).name, range = 800, delay = myHero:GetSpellData(_E).delayTotalTimePercent, speed = myHero:GetSpellData(_E).missileSpeed, width = myHero:GetSpellData(_E).lineWidth },
+	R = { ready = false, name = myHero:GetSpellData(_R).name, range = 2550, delay = 0.5, speed = 1200, width = 550 },
 }
 local AnimationCancel =
 {
@@ -66,8 +93,6 @@ function GetCustomTarget()
 end
 
 function OnLoad()
-	if _G.ScriptLoaded then	return end
-	_G.ScriptLoaded = true
 	initComponents()
 end
 
@@ -79,7 +104,7 @@ function initComponents()
 	-- Target Selector
 	ts = TargetSelector(TARGET_LESS_CAST_PRIORITY, 900)
 	
-	Menu = scriptConfig("Tristana Mechanics by Mr Articuno", "TristanaMA")
+	Menu = scriptConfig("Nami Mechanics by Mr Articuno", "NamiMA")
 
 	if _G.MMA_Loaded ~= nil then
 		PrintChat("<font color = \"#33CCCC\">MMA Status:</font> <font color = \"#fff8e7\"> Loaded</font>")
@@ -93,17 +118,18 @@ function initComponents()
 		Orbwalker:LoadToMenu(Menu.SOWorb)
 	end
 	
-	Menu:addSubMenu("["..myHero.charName.." - Combo]", "TristanaCombo")
-	Menu.TristanaCombo:addParam("combo", "Combo mode", SCRIPT_PARAM_ONKEYDOWN, false, 32)
-	Menu.TristanaCombo:addSubMenu("Q Settings", "qSet")
-	Menu.TristanaCombo.qSet:addParam("useQ", "Use Q in combo", SCRIPT_PARAM_ONOFF, true)
-	Menu.TristanaCombo:addSubMenu("W Settings", "wSet")
-	Menu.TristanaCombo.wSet:addParam("useW", "Use W", SCRIPT_PARAM_ONOFF, false)
-	Menu.TristanaCombo.wSet:addParam("wAp", "AP Tristana", SCRIPT_PARAM_ONOFF, false)
-	Menu.TristanaCombo:addSubMenu("E Settings", "eSet")
-	Menu.TristanaCombo.eSet:addParam("useE", "Use E in combo", SCRIPT_PARAM_ONOFF, true)
-	Menu.TristanaCombo:addSubMenu("R Settings", "rSet")
-	Menu.TristanaCombo.rSet:addParam("useR", "Use Smart Ultimate", SCRIPT_PARAM_ONOFF, true)
+	Menu:addSubMenu("["..myHero.charName.." - Combo]", "NamiCombo")
+	Menu.NamiCombo:addParam("combo", "Combo mode", SCRIPT_PARAM_ONKEYDOWN, false, 32)
+	Menu.NamiCombo:addSubMenu("Q Settings", "qSet")
+	Menu.NamiCombo.qSet:addParam("useQ", "Use Q in combo", SCRIPT_PARAM_ONOFF, true)
+	Menu.NamiCombo:addSubMenu("W Settings", "wSet")
+	Menu.NamiCombo.wSet:addParam("useW", "Use W", SCRIPT_PARAM_ONOFF, false)
+	Menu.NamiCombo.wSet:addParam("wAp", "AP Nami", SCRIPT_PARAM_ONOFF, false)
+	Menu.NamiCombo:addSubMenu("E Settings", "eSet")
+	Menu.NamiCombo.eSet:addParam("useE", "Use E in combo", SCRIPT_PARAM_ONOFF, true)
+	Menu.NamiCombo:addSubMenu("R Settings", "rSet")
+	Menu.NamiCombo.rSet:addParam("useR", "Use Smart Ultimate", SCRIPT_PARAM_ONOFF, true)
+	Menu.NamiCombo.rSet:addParam("minimumCount", "Minimum Number of Champions Hitable", SCRIPT_PARAM_SLICE, 1, 1, 5)
 	
 	Menu:addSubMenu("["..myHero.charName.." - Harass]", "Harass")
 	Menu.Harass:addParam("harass", "Harass", SCRIPT_PARAM_ONKEYDOWN, false, string.byte("G"))
@@ -122,6 +148,12 @@ function initComponents()
 	Menu.Jungleclear:addParam("useClearQ", "Use Q in Jungleclear", SCRIPT_PARAM_ONOFF, true)
 	Menu.Jungleclear:addParam("useClearW", "Use W in Jungleclear", SCRIPT_PARAM_ONOFF, false)
 	Menu.Jungleclear:addParam("useClearE", "Use E in Jungleclear", SCRIPT_PARAM_ONOFF, true)
+
+	Menu:addSubMenu("["..myHero.charName.." - Auto Heal]", "AutoHeal")
+	Menu.AutoHeal:addParam("jclr", "Jungleclear Key", SCRIPT_PARAM_ONKEYDOWN, false, string.byte("V"))
+	Menu.AutoHeal:addParam("useClearQ", "Use Q in Jungleclear", SCRIPT_PARAM_ONOFF, true)
+	Menu.AutoHeal:addParam("useClearW", "Use W in Jungleclear", SCRIPT_PARAM_ONOFF, false)
+	Menu.AutoHeal:addParam("useClearE", "Use E in Jungleclear", SCRIPT_PARAM_ONOFF, true)
 	
 	Menu:addSubMenu("["..myHero.charName.." - Additionals]", "Ads")
 	Menu.Ads:addParam("cancel", "Animation Cancel", SCRIPT_PARAM_LIST, 1, { "Move","Laugh","Dance","Taunt","joke","Nothing" })
@@ -131,14 +163,12 @@ function initComponents()
 	Menu.Ads:addParam("antiGapCloser", "Anti Gap Closer", SCRIPT_PARAM_ONOFF, false)
 	Menu.Ads:addParam("autoLevel", "Auto-Level Spells", SCRIPT_PARAM_ONOFF, false)
 	Menu.Ads:addSubMenu("Killsteal", "KS")
-	Menu.Ads.KS:addParam("useW", "Use W", SCRIPT_PARAM_ONOFF, false)
-	Menu.Ads.KS:addParam("useR", "Use R", SCRIPT_PARAM_ONOFF, false)
 	Menu.Ads.KS:addParam("ignite", "Use Ignite", SCRIPT_PARAM_ONOFF, false)
 	Menu.Ads.KS:addParam("igniteRange", "Minimum range to cast Ignite", SCRIPT_PARAM_SLICE, 470, 0, 600, 0)
 	Menu.Ads:addSubMenu("VIP", "VIP")
-	--Menu.Ads.VIP:addParam("spellCast", "Spell by Packet", SCRIPT_PARAM_ONOFF, true)
+	Menu.Ads.VIP:addParam("useProdiction", "Use Prodiction", SCRIPT_PARAM_ONOFF, true)
 	Menu.Ads.VIP:addParam("skin", "Use custom skin", SCRIPT_PARAM_ONOFF, false)
-	Menu.Ads.VIP:addParam("skin1", "Skin changer", SCRIPT_PARAM_SLICE, 1, 1, 7)
+	Menu.Ads.VIP:addParam("skin1", "Skin changer", SCRIPT_PARAM_SLICE, 1, 1, 3)
 	
 	Menu:addSubMenu("["..myHero.charName.." - Target Selector]", "targetSelector")
 	Menu.targetSelector:addTS(ts)
@@ -147,8 +177,8 @@ function initComponents()
 	Menu:addSubMenu("["..myHero.charName.." - Drawings]", "drawings")
 	local DManager = DrawManager()
 	DManager:CreateCircle(myHero, Ranges.AA + (myHero.level * 8.5), 1, {255, 0, 255, 0}):AddToMenu(Menu.drawings,"AA range", true, true, true)
-	DManager:CreateCircle(myHero, skills.SkillQ.range, 1, {255, 0, 255, 0}):AddToMenu(Menu.drawings,"Q range", true, true, true)
-	DManager:CreateCircle(myHero, skills.SkillW.range, 1, {255, 0, 255, 0}):AddToMenu(Menu.drawings,"W range", true, true, true)
+	DManager:CreateCircle(myHero, skills.Q.range, 1, {255, 0, 255, 0}):AddToMenu(Menu.drawings,"Q range", true, true, true)
+	DManager:CreateCircle(myHero, skills.W.range, 1, {255, 0, 255, 0}):AddToMenu(Menu.drawings,"W range", true, true, true)
 	DManager:CreateCircle(myHero, Ranges.AA + (myHero.level * 8.5), 1, {255, 0, 255, 0}):AddToMenu(Menu.drawings,"E range", true, true, true)
 	DManager:CreateCircle(myHero, Ranges.AA + (myHero.level * 8.5), 1, {255, 0, 255, 0}):AddToMenu(Menu.drawings,"R range", true, true, true)
 	
@@ -157,11 +187,11 @@ function initComponents()
 	jungleMinions = minionManager(MINION_JUNGLE, 360, myHero, MINION_SORT_MAXHEALTH_DEC)
 	
 	if Menu.Ads.VIP.skin and VIP_USER then
-		GenModelPacket("Tristana", Menu.Ads.VIP.skin1)
+		GenModelPacket("Nami", Menu.Ads.VIP.skin1)
 		lastSkin = Menu.Ads.VIP.skin1
 	end
 	
-	PrintChat("<font color = \"#33CCCC\">Tristana Mechanics by</font> <font color = \"#fff8e7\">Mr Articuno V"..version.."</font>")
+	PrintChat("<font color = \"#33CCCC\">Nami Mechanics by</font> <font color = \"#fff8e7\">Mr Articuno V"..version.."</font>")
 	PrintChat("<font color = \"#4693e0\">Sponsored by www.RefsPlea.se</font> <font color = \"#d6ebff\"> - A League of Legends Referrals service. Get RP cheaper!</font>")
 end
 
@@ -174,7 +204,7 @@ function OnTick()
 	KillSteal()
 
 	if Menu.Ads.VIP.skin and VIP_USER and skinChanged() then
-		GenModelPacket("Tristana", Menu.Ads.VIP.skin1)
+		GenModelPacket("Nami", Menu.Ads.VIP.skin1)
 		lastSkin = Menu.Ads.VIP.skin1
 	end
 
@@ -182,7 +212,7 @@ function OnTick()
 		AutoLevel()
 	end
 	
-	if Menu.TristanaCombo.combo then
+	if Menu.NamiCombo.combo then
 		Combo()
 	end
 	
@@ -202,10 +232,10 @@ end
 
 function CDHandler()
 	-- Spells
-	skills.SkillQ.ready = (myHero:CanUseSpell(_Q) == READY)
-	skills.SkillW.ready = (myHero:CanUseSpell(_W) == READY)
-	skills.SkillE.ready = (myHero:CanUseSpell(_E) == READY)
-	skills.SkillR.ready = (myHero:CanUseSpell(_R) == READY)
+	skills.Q.ready = (myHero:CanUseSpell(_Q) == READY)
+	skills.W.ready = (myHero:CanUseSpell(_W) == READY)
+	skills.E.ready = (myHero:CanUseSpell(_E) == READY)
+	skills.R.ready = (myHero:CanUseSpell(_R) == READY)
 	Ranges.AA = myHero.range
 	-- Items
 	tiamatSlot = GetInventorySlotItem(3077)
@@ -225,9 +255,9 @@ function CDHandler()
 	divineReady = (divineSlot ~= nil and myHero:CanUseSpell(divineSlot) == READY)
 
 	Ranges.AA = 550 + (myHero.level * 8.5)
-	skills.SkillE.range = Ranges.AA
-	skills.SkillR.range = Ranges.AA
-	skills.SkillQ.range = Ranges.AA
+	skills.E.range = Ranges.AA
+	skills.R.range = Ranges.AA
+	skills.Q.range = Ranges.AA
 
 	-- Summoners
 	if myHero:GetSpellData(SUMMONER_1).name:find("SummonerDot") then
@@ -242,11 +272,11 @@ end
 
 function Harass()	
 	if target ~= nil and ValidTarget(target) then
-		if Menu.Harass.useE and ValidTarget(target, skills.SkillE.range) and skills.SkillE.ready then
+		if Menu.Harass.useE and ValidTarget(target, skills.E.range) and skills.E.ready then
 			CastSpell(_E, target)
 		end
 
-		if Menu.Harass.useQ and ValidTarget(target, Ranges.AA) and skills.SkillQ.ready then
+		if Menu.Harass.useQ and ValidTarget(target, Ranges.AA) and skills.Q.ready then
 			CastSpell(_Q)
 		end
 	end
@@ -273,34 +303,34 @@ end
 function AllInCombo(target, typeCombo)
 	if target ~= nil and typeCombo == 0 then
 		ItemUsage(target)
-		if skills.SkillR.ready and Menu.TristanaCombo.rSet.useR and ValidTarget(target, skills.SkillR.range) then
+		if skills.R.ready and Menu.NamiCombo.rSet.useR and ValidTarget(target, skills.R.range) then
 			rDmg = getDmg("R", target, myHero)
 
-			if skills.SkillR.ready and target ~= nil and ValidTarget(target, 645) and target.health < rDmg then
+			if skills.R.ready and target ~= nil and ValidTarget(target, 645) and target.health < rDmg then
 				CastSpell(_R, target)
 			end
 		end
-		if Menu.TristanaCombo.eSet.useE and ValidTarget(target, Ranges.AA) and skills.SkillE.ready then
+		if Menu.NamiCombo.eSet.useE and ValidTarget(target, Ranges.AA) and skills.E.ready then
 			CastSpell(_E, target)
 		end
 
-		if Menu.TristanaCombo.qSet.useQ and ValidTarget(target, Ranges.AA) and skills.SkillQ.ready then
+		if Menu.NamiCombo.qSet.useQ and ValidTarget(target, Ranges.AA) and skills.Q.ready then
 			CastSpell(_Q)
 		end
 
-		if Menu.TristanaCombo.wSet.useW and ValidTarget(target, skills.SkillW.range) and skills.SkillW.ready then
-			if Menu.TristanaCombo.wSet.wAp then
-				local wPosition, wChance = VP:GetCircularCastPosition(target, skills.SkillW.delay, skills.SkillW.width, skills.SkillW.range, skills.SkillW.speed, myHero, true)
+		if Menu.NamiCombo.wSet.useW and ValidTarget(target, skills.W.range) and skills.W.ready then
+			if Menu.NamiCombo.wSet.wAp then
+				local wPosition, wChance = VP:GetCircularCastPosition(target, skills.W.delay, skills.W.width, skills.W.range, skills.W.speed, myHero, true)
 
-			    if wPosition ~= nil and GetDistance(wPosition) < skills.SkillW.range and wChance >= 2 then
+			    if wPosition ~= nil and GetDistance(wPosition) < skills.W.range and wChance >= 2 then
 			      CastSpell(_W, wPosition.x, wPosition.z)
 			    end
 			else
 				wDmg = getDmg("W", target, myHero)
-				if skills.SkillW.ready and target ~= nil and ValidTarget(target, skills.SkillW.range) and target.health < wDmg then
-					local wPosition, wChance = VP:GetCircularCastPosition(target, skills.SkillW.delay, skills.SkillW.width, skills.SkillW.range, skills.SkillW.speed, myHero, true)
+				if skills.W.ready and target ~= nil and ValidTarget(target, skills.W.range) and target.health < wDmg then
+					local wPosition, wChance = VP:GetCircularCastPosition(target, skills.W.delay, skills.W.width, skills.W.range, skills.W.speed, myHero, true)
 
-				    if wPosition ~= nil and GetDistance(wPosition) < skills.SkillW.range and wChance >= 2 then
+				    if wPosition ~= nil and GetDistance(wPosition) < skills.W.range and wChance >= 2 then
 				      CastSpell(_W, wPosition.x, wPosition.z)
 				    end
 				end
@@ -315,13 +345,13 @@ end
 function LaneClear()
 	for i, targetMinion in pairs(targetMinions.objects) do
 		if targetMinion ~= nil then
-			if Menu.Laneclear.useClearQ and skills.SkillQ.ready and ValidTarget(targetMinion, Ranges.AA) then
+			if Menu.Laneclear.useClearQ and skills.Q.ready and ValidTarget(targetMinion, Ranges.AA) then
 				CastSpell(_Q)
 			end
-			if Menu.Laneclear.useClearW and skills.SkillW.ready and ValidTarget(targetMinion, skills.SkillW.range) then
+			if Menu.Laneclear.useClearW and skills.W.ready and ValidTarget(targetMinion, skills.W.range) then
 				CastSpell(_W, targetMinion)
 			end
-			if Menu.Laneclear.useClearE and skills.SkillE.ready and ValidTarget(targetMinion, Ranges.AA) then
+			if Menu.Laneclear.useClearE and skills.E.ready and ValidTarget(targetMinion, Ranges.AA) then
 				CastSpell(_E, targetMinion)
 			end
 		end
@@ -332,20 +362,20 @@ end
 function JungleClear()
 	for i, jungleMinion in pairs(jungleMinions.objects) do
 		if jungleMinion ~= nil then
-			if Menu.Jungleclear.useClearQ and skills.SkillQ.ready and ValidTarget(jungleMinion, Ranges.AA) then
+			if Menu.Jungleclear.useClearQ and skills.Q.ready and ValidTarget(jungleMinion, Ranges.AA) then
 				CastSpell(_Q)
 			end
-			if Menu.Jungleclear.useClearW and skills.SkillW.ready and ValidTarget(jungleMinion, skills.SkillW.range) then
+			if Menu.Jungleclear.useClearW and skills.W.ready and ValidTarget(jungleMinion, skills.W.range) then
 				CastSpell(_W, jungleMinion)
 			end
-			if Menu.Jungleclear.useClearE and skills.SkillE.ready and ValidTarget(jungleMinion, Ranges.AA) then
+			if Menu.Jungleclear.useClearE and skills.E.ready and ValidTarget(jungleMinion, Ranges.AA) then
 				CastSpell(_E, jungleMinion)
 			end
 
 			if jungleMinion.name == "Dragon6.1.1" or jungleMinion.name == "Worm12.1.1" then
 				rDmg = getDmg("R", jungleMinion, myHero)
 
-				if skills.SkillR.ready and jungleMinion ~= nil and ValidTarget(jungleMinion, skills.SkillR.range) and jungleMinion.health < rDmg then
+				if skills.R.ready and jungleMinion ~= nil and ValidTarget(jungleMinion, skills.R.range) and jungleMinion.health < rDmg then
 					CastSpell(_R, jungleMinion)
 				end
 			end
@@ -382,9 +412,9 @@ function KSR()
 	for i, target in ipairs(GetEnemyHeroes()) do
 		rDmg = getDmg("R", target, myHero)
 
-		if skills.SkillR.ready and target ~= nil and ValidTarget(target, 645) and target.health < rDmg then
+		if skills.R.ready and target ~= nil and ValidTarget(target, 645) and target.health < rDmg then
 			CastSpell(_R, target)
-		elseif skills.SkillR.ready and skills.SkillW.ready and target ~= nil and ValidTarget(target, 645 + skills.SkillW.range) and target.health < rDmg and Menu.Ads.KS.useW then
+		elseif skills.R.ready and skills.W.ready and target ~= nil and ValidTarget(target, 645 + skills.W.range) and target.health < rDmg and Menu.Ads.KS.useW then
 			CastSpell(_W, target.x, target.z)
 			CastSpell(_R, target)
 		end
@@ -498,7 +528,7 @@ function OnProcessSpell(unit, spell)
         ['Renekton']    = {true, spell = _E,                  range = 450,   projSpeed = 2000, },
         ['Sejuani']     = {true, spell = _Q,                  range = 650,   projSpeed = 2000, },
         ['Shen']        = {true, spell = _E,                  range = 575,   projSpeed = 2000, },
-        ['Tristana']    = {true, spell = _W,                  range = 900,   projSpeed = 2000, },
+        ['Nami']    = {true, spell = _W,                  range = 900,   projSpeed = 2000, },
         ['Tryndamere']  = {true, spell = 'Slash',             range = 650,   projSpeed = 1450, },
         ['XinZhao']     = {true, spell = _E,                  range = 650,   projSpeed = 2000, }, -- Targeted ability
     }
