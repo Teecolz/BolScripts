@@ -93,6 +93,7 @@ function GetCustomTarget()
 end
 
 function OnLoad()
+	_G.ScriptLoaded = true
 	initComponents()
 end
 
