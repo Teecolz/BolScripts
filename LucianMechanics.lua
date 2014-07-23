@@ -11,7 +11,7 @@
 if myHero.charName ~= "Lucian" then return end
 
 
-local version = 0.21
+local version = 0.3
 local AUTOUPDATE = true
 
 
@@ -103,7 +103,7 @@ function initComponents()
 	-- SOW Declare
 	Orbwalker = SOW(VP)
 	-- Target Selector
-	ts = TargetSelector(TARGET_LESS_CAST_PRIORITY, 1400)
+	ts = TargetSelector(TARGET_LESS_CAST_PRIORITY, 1825)
 	
 	Menu = scriptConfig("Lucian Mechanics by Mr Articuno", "LucianMA")
 
@@ -154,7 +154,7 @@ function initComponents()
 		animationCancel(unit,spell)
 	end)
 	Menu.Ads:addParam("autoLevel", "Auto-Level Spells", SCRIPT_PARAM_ONOFF, false)
-	Menu.Ads:addParam("waitAA", "Faker Mode", SCRIPT_PARAM_ONOFF, false)
+	Menu.Ads:addParam("waitAA", "Wait Auto Attack", SCRIPT_PARAM_ONOFF, false)
 	Menu.Ads:addSubMenu("Killsteal", "KS")
 	Menu.Ads.KS:addParam("ignite", "Use Ignite", SCRIPT_PARAM_ONOFF, false)
 	Menu.Ads.KS:addParam("igniteRange", "Minimum range to cast Ignite", SCRIPT_PARAM_SLICE, 470, 0, 600, 0)
@@ -294,25 +294,26 @@ end
 
 function AllInCombo(target, typeCombo)
 	if target ~= nil and typeCombo == 0 then
-		ItemUsage(target)
+
+		if GetDistance(target) < skills.E.range + Ranges.AA then
+			ItemUsage(target)
+		end
 
 		if not usingUltimate then
-			if not Menu.Ads.waitAA then
-				if not waitAA then
-					if Menu.LucianCombo.eSet.useE and GetDistance(target) > Ranges.AA and GetDistance(target) < Ranges.AA + skills.E.range and skills.E.ready then
-						CastSpell(_E, target.x, target.z)
-						waitAA = true
-					end
+			if Menu.Ads.waitAA then
+				if Menu.LucianCombo.eSet.useE and GetDistance(target) > Ranges.AA and GetDistance(target) < Ranges.AA + skills.E.range and skills.E.ready and not waitAA then
+					CastSpell(_E, target.x, target.z)
+					waitAA = true
+				end
 
-					if Menu.LucianCombo.qSet.useQ and ValidTarget(target, skills.Q.range) and skills.Q.ready then
-						CastSpell(_Q, target)
-						waitAA = true
-					end
+				if Menu.LucianCombo.qSet.useQ and ValidTarget(target, skills.Q.range) and skills.Q.ready and not waitAA then
+					CastSpell(_Q, target)
+					waitAA = true
+				end
 
-					if Menu.LucianCombo.wSet.useW and ValidTarget(target, skills.W.range) and skills.W.ready then
-						CastSpell(_W, target.x, target.z)
-						waitAA = true
-					end
+				if Menu.LucianCombo.wSet.useW and ValidTarget(target, skills.W.range) and skills.W.ready and not waitAA then
+					CastSpell(_W, target.x, target.z)
+					waitAA = true
 				end
 			else
 				if Menu.LucianCombo.eSet.useE and GetDistance(target) > Ranges.AA and GetDistance(target) < Ranges.AA + skills.E.range and skills.E.ready then
@@ -329,13 +330,15 @@ function AllInCombo(target, typeCombo)
 			end
 		end
 		
-		if (Menu.LucianCombo.rSet.useR and GetDistance(target) > 1000 and GetDistance(target) < 1400 and skills.R.ready) or not skills.E.ready and GetDistance(target) > Ranges.AA then
-			if not usingUltimate then
-				local Position, Chance = VP:GetLineCastPosition(target, skills.R.delay, skills.R.width, skills.R.range, skills.R.speed, myHero, false)
+		if Menu.LucianCombo.rSet.useR and GetDistance(target) < skills.R.range then
+			if not skills.E.ready and not skills.W.ready and GetDistance(target) > Ranges.AA and not usingUltimate then
+				if not usingUltimate then
+					local Position, Chance = VP:GetLineCastPosition(target, skills.R.delay, skills.R.width, skills.R.range, skills.R.speed, myHero, false)
 
-			    if Position ~= nil and GetDistance(Position) < skills.R.range and Chance >= 2 then
-			      CastSpell(_R, Position.x, Position.z)
-			    end
+				    if Position ~= nil and GetDistance(Position) < skills.R.range and Chance >= 2 then
+				      	CastSpell(_R, Position.x, Position.z)
+				    end
+				end
 			end
 		end
 
@@ -448,8 +451,10 @@ end
 function OnProcessSpell( unit, spell )
 	if unit.isMe and spell.name:lower():find("attack") then
 		DelayAction(function()
-			waitAA = false
-		end, (spell.windUpTime - (GetLatency() / 2000)))
+			if waitAA then
+				waitAA = false
+			end
+		end, spell.windUpTime)
 	end
 
 end
@@ -489,6 +494,36 @@ end
 
 function skinChanged()
 	return Menu.Ads.VIP.skin1 ~= lastSkin
+end
+
+function OnSendPacket(p)
+	if usingUltimate then
+	    local p = Packet(p)
+        if p:get('name') == 'S_CAST' then
+            if not p:get('spellId') == _R then
+            	p:block()
+            end
+        end
+    elseif Menu.Ads.waitAA then
+    	local p = Packet(p)
+        if p:get('name') == 'S_CAST' then
+        	if waitAA then
+	            if p:get('spellId') == _Q then
+	            	print("blocked Q")
+	            	p:block()
+	            end
+	            if p:get('spellId') == _W then
+	            	print("blocked W")
+	            	p:block()
+	            end
+	            if p:get('spellId') == _E then
+	            	print("blocked E")
+	            	p:block()
+	            end
+
+        	end
+        end
+    end
 end
 
 
