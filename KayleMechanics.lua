@@ -72,6 +72,8 @@ local swingDelay = 0.25
 local swing = false
 
 function OnLoad()
+	if _G.ScriptLoaded then	return end
+	_G.ScriptLoaded = true
 	initComponents()
 end
 

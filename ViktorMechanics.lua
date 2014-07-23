@@ -112,6 +112,8 @@ function GetCustomTarget()
 end
 
 function OnLoad()
+	if _G.ScriptLoaded then	return end
+	_G.ScriptLoaded = true
 	initComponents()
 end
 
