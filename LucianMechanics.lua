@@ -11,7 +11,7 @@
 if myHero.charName ~= "Lucian" then return end
 
 
-local version = 0.31
+local version = 0.32
 local AUTOUPDATE = true
 
 
@@ -128,6 +128,7 @@ function initComponents()
 	Menu.LucianCombo.wSet:addParam("useW", "Use W", SCRIPT_PARAM_ONOFF, false)
 	Menu.LucianCombo:addSubMenu("E Settings", "eSet")
 	Menu.LucianCombo.eSet:addParam("useE", "Use E in combo", SCRIPT_PARAM_ONOFF, true)
+	Menu.LucianCombo.eSet:addParam("dashToMouse", "To Mouse Postition", SCRIPT_PARAM_ONOFF, true)
 	Menu.LucianCombo:addSubMenu("R Settings", "rSet")
 	Menu.LucianCombo.rSet:addParam("useR", "Use Smart Ultimate", SCRIPT_PARAM_ONOFF, true)
 	
@@ -261,8 +262,8 @@ end
 
 function Harass()	
 	if target ~= nil and ValidTarget(target) then
-		if Menu.Harass.useE and ValidTarget(target, skills.E.range) and skills.E.ready then
-			CastSpell(_E, target.x, target.z)
+		if Menu.Harass.useE and ValidTarget(target, skills.E.range + Ranges.AA) and skills.E.ready then
+			CastSpell(_E, mousePos.x, mousePos.z)
 		end
 
 		if Menu.Harass.useQ and ValidTarget(target, skills.Q.range) and skills.Q.ready then
@@ -296,14 +297,18 @@ end
 function AllInCombo(target, typeCombo)
 	if target ~= nil and typeCombo == 0 then
 
-		if GetDistance(target) < skills.E.range + Ranges.AA then
+		if GetDistance(target) <= Ranges.AA then
 			ItemUsage(target)
 		end
 
 		if not usingUltimate then
 			if Menu.Ads.waitAA then
 				if Menu.LucianCombo.eSet.useE and GetDistance(target) > Ranges.AA and GetDistance(target) < Ranges.AA + skills.E.range and skills.E.ready and not waitAA then
-					CastSpell(_E, target.x, target.z)
+					if Menu.LucianCombo.eSet.dashToMouse then
+						CastSpell(_E, mousePos.x, mousePos.z)
+					else
+						CastSpell(_E, target.x, target.z)
+					end
 					waitAA = true
 				end
 
@@ -353,7 +358,7 @@ function LaneClear()
 	for i, targetMinion in pairs(targetMinions.objects) do
 		if targetMinion ~= nil then
 			if Menu.Laneclear.useClearE and ValidTarget(targetMinion, skills.E.range) and skills.E.ready then
-				CastSpell(_E, targetMinion.x, targetMinion.z)
+				CastSpell(_E, mousePos.x, mousePos.z)
 				waitAA = true
 			end
 
@@ -375,7 +380,7 @@ function JungleClear()
 	for i, jungleMinion in pairs(jungleMinions.objects) do
 		if jungleMinion ~= nil then
 			if Menu.Jungleclear.useClearE and ValidTarget(jungleMinion, skills.E.range) and skills.E.ready then
-				CastSpell(_E, jungleMinion.x, jungleMinion.z)
+				CastSpell(_E, mousePos.x, mousePos.z)
 			end
 
 			if Menu.Jungleclear.useClearQ and ValidTarget(jungleMinion, skills.Q.range) and skills.Q.ready then
