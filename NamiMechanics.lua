@@ -11,7 +11,7 @@
 if myHero.charName ~= "Nami" then return end
 
 
-local version = 0.1
+local version = 0.2
 local AUTOUPDATE = true
 
 
@@ -52,7 +52,7 @@ local ts = nil
 local VP = nil
 local qMode = false
 local qOff, wOff, eOff, rOff = 0,0,0,0
-local abilitySequence = {3, 2, 3, 1, 4, 1, 1, 1, 1, 3, 4, 2, 2, 2, 2, 4, 3, 3}
+local abilitySequence = {2, 1, 3, 2, 2, 4, 2, 1, 2, 1, 4, 1, 1, 3, 3, 4, 3, 3}
 local Ranges = { AA = 550 }
 local skills = {
     Q = { ready = false, name = myHero:GetSpellData(_Q).name, range = 875, delay = 0.5, speed = 1750, width = 200 },
