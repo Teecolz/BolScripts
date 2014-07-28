@@ -18,12 +18,15 @@ Draw Texts;
 E Logic;
 R Logic;
 
+0.3 - 28/7/14
+Max E range.
+
 ]]
 
 if myHero.charName ~= "Viktor" or not VIP_USER then return end
 
 
-local version = 0.2
+local version = 0.3
 local AUTOUPDATE = true
 
 
@@ -288,73 +291,56 @@ end
 
 -- Harass --
 
-function Harass()	
-	if target ~= nil and ValidTarget(target) then
-		
-		if target.type == myHero.type then
+function Harass()
+	if Menu.Harass.useQ and ValidTarget(target, skills.Q.range) and skills.Q.ready then
+	  CastSpell(_Q, target)
+	end
 
-			if Menu.Harass.useQ and ValidTarget(target, skills.Q.range) and skills.Q.ready then
+	if Menu.Harass.useE and ValidTarget(target, skills.E.range + 500) and skills.E.ready then
+		pos, info = Prodiction.GetPrediction(target, skills.E.range, skills.E.speed, skills.E.delay, skills.E.width)
 
-				CastSpell(_Q, target)
+		if ValidTarget(target, skills.E.range) then
+			 -- Ryuk's E cast Logic --
+			nearUnit = nearEnemy(target, skills.E.range)
+			if nearUnit then
+				pos2 = Prodiction.GetPrediction(nearUnit, skills.E.range, skills.E.speed, skills.E.delay, skills.E.width)
+				if GetDistance((nearUnit or target)) > 540 and pos ~= nil and pos2 ~= nil then
+					--
+					m = (pos.z - pos2.z)/(pos.x - pos2.x)
+					b = pos.z - (m*pos.x)
 
-			end
-
-			if Menu.Harass.useE and ValidTarget(target, skills.E.range) and skills.E.ready then
-
-				pos, info = Prodiction.GetPrediction(target, skills.E.range, skills.E.speed, skills.E.delay, skills.E.width)
-
-				-- Ryuk's E cast Logic --
-
-				nearUnit = nearEnemy(target, skills.E.range)
-
-				if nearUnit then
-					pos2 = Prodiction.GetPrediction(nearUnit, skills.E.range, skills.E.speed, skills.E.delay, skills.E.width)
-
-					if GetDistance((nearUnit or target)) > 540 and pos ~= nil and pos2 ~= nil then
-						m = (pos.z - pos2.z)/(pos.x - pos2.x)
-						b = pos.z - (m*pos.x)
-
-						x = (- 500 - b)/(m-1)
-						z = (m*x) + b
-
-						castE(x,z,pos.x,pos.z)
+					x = (- 500 - b)/(m-1)
+					z = (m*x) + b
+					--
+					castE(x,z,pos.x,pos.z)
+				else
+					if pos and pos2 then
+						c = nil
+						f = nil
+					elseif GetDistance(nearUnit) > GetDistance(target) then
+						c = pos
+						f = pos2
 					else
-						if pos and pos2 then
-							c = nil
-							f = nil
-							if GetDistance(nearUnit) > GetDistance(target) then
-								c = pos
-								f = pos2
-							else
-								c = pos2
-								f = pos
-								castE(c.x,c.z,f.x,f.z)
-							end
-						end
+						c = pos2
+						f = pos
+						castE(c.x,c.z,f.x,f.z)
 					end
 				end
-
-				castE(target.x, target.z, pos.x, pos.z)  
 			end
-
-			if Menu.Harass.useE and ValidTarget(target, skills.E.range + 530) and skills.E.ready then
-
-				pos, info = Prodiction.GetPrediction(target, skills.E.range, skills.E.speed, skills.E.delay, skills.E.width)
-
-				castE(target.x, target.z, pos.x, pos.z)  
-			end
-
-			if Menu.Harass.useW and ValidTarget(target, skills.W.range) and skills.W.ready then
-
-				pos, info = Prodiction.GetPrediction(target, skills.W.range, skills.W.speed, skills.W.delay, skills.W.width)
-
-				CastSpell(_W, pos.x, pos.z)
-
-			end
-
+		elseif ValidTarget(target, skills.E.range + 550) then
+			TargetPos = {x = pos.x, y = pos.y, z = pos.z}
+			MyPos = Vector(myHero.x, myHero.y, myHero.z)
+			ePos = MyPos + (MyPos - TargetPos)*(-550/GetDistance(pos))
+			castE(ePos.x, ePos.z, pos.x, pos.z)
 		end
-		
 	end
+
+	if Menu.Harass.useW and ValidTarget(target, skills.W.range) and skills.W.ready then
+		pos, info = Prodiction.GetPrediction(target, skills.W.range, skills.W.speed, skills.W.delay, skills.W.width)
+
+		CastSpell(_W, pos.x, pos.z)
+	end
+
 end
 
 -- End Harass --
@@ -362,39 +348,34 @@ end
 -- Combo Selector --
 
 function Combo()
-	local typeCombo = 0
-	if target ~= nil then
-		AllInCombo(target, 0)
-	end
-	
+  local typeCombo = 0
+  if target ~= nil then
+    AllInCombo(target, 0)
+  end
+
 end
 
 -- Combo Selector --
 
--- All In Combo -- 
+-- All In Combo --
 
 function AllInCombo(target, typeCombo)
 	if target ~= nil and typeCombo == 0 then
 		ItemUsage(target)
 
 		if Menu.ViktorCombo.qSet.useQ and ValidTarget(target, skills.Q.range) and skills.Q.ready then
-
-			CastSpell(_Q, target)
-
+		  CastSpell(_Q, target)
 		end
 
-		if Menu.ViktorCombo.eSet.useE and ValidTarget(target, skills.E.range) and skills.E.ready then
-
+		if Menu.ViktorCombo.eSet.useE and ValidTarget(target, skills.E.range + 500) and skills.E.ready then
 			pos, info = Prodiction.GetPrediction(target, skills.E.range, skills.E.speed, skills.E.delay, skills.E.width)
 
-			-- Ryuk's E cast Logic --
-
-			nearUnit = nearEnemy(target, skills.E.range)
-
-			if nearUnit then
-				pos2 = Prodiction.GetPrediction(nearUnit, skills.E.range, skills.E.speed, skills.E.delay, skills.E.width)
-
-				if GetDistance((nearUnit or target)) > 540 and pos ~= nil and pos2 ~= nil then
+			if ValidTarget(target, skills.E.range) then
+				 -- Ryuk's E cast Logic --
+				nearUnit = nearEnemy(target, skills.E.range)
+				if nearUnit then
+					pos2 = Prodiction.GetPrediction(nearUnit, skills.E.range, skills.E.speed, skills.E.delay, skills.E.width)
+					if GetDistance((nearUnit or target)) > 540 and pos ~= nil and pos2 ~= nil then
 						--
 						m = (pos.z - pos2.z)/(pos.x - pos2.x)
 						b = pos.z - (m*pos.x)
@@ -407,19 +388,22 @@ function AllInCombo(target, typeCombo)
 						if pos and pos2 then
 							c = nil
 							f = nil
-							if GetDistance(nearUnit) > GetDistance(target) then
-								c = pos
-								f = pos2
-							else
-								c = pos2
-								f = pos
-
-								castE(c.x,c.z,f.x,f.z)
-							end
+						elseif GetDistance(nearUnit) > GetDistance(target) then
+							c = pos
+							f = pos2
+						else
+							c = pos2
+							f = pos
+							castE(c.x,c.z,f.x,f.z)
 						end
 					end
 				end
-				castE(target.x, target.z, pos.x, pos.z) 
+			elseif ValidTarget(target, skills.E.range + 550) then
+				TargetPos = {x = pos.x, y = pos.y, z = pos.z}
+				MyPos = Vector(myHero.x, myHero.y, myHero.z)
+				ePos = MyPos + (MyPos - TargetPos)*(-550/GetDistance(pos))
+
+				castE(ePos.x, ePos.z, pos.x, pos.z)
 			end
 		end
 
@@ -433,16 +417,16 @@ function AllInCombo(target, typeCombo)
 
 		if Menu.ViktorCombo.rSet.useR and ValidTarget(target, skills.R.range) and skills.R.ready then
 			rDmg = getDmg("R", target, myHero)
-			
-			if not target.canMove then
-				CastSpell(_R, target.x, target.z)
-			else
-				if target.health < rDmg then
-					CastSpell(_R, target.x, target.z)
-				end
-			end
 
+			if not target.canMove then
+			  CastSpell(_R, target.x, target.z)
+			else
+			  if target.health < rDmg then
+			    CastSpell(_R, target.x, target.z)
+			  end
+			end
 		end
+	end
 end
 
 -- All In Combo --
