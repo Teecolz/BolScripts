@@ -11,7 +11,7 @@
 if myHero.charName ~= "Gragas" then return end
 
 
-local version = 0.46
+local version = 0.59
 local AUTOUPDATE = true
 
 
@@ -349,14 +349,6 @@ function AllInCombo(target, typeCombo)
 				end
 			end
 		else
-			if QREADY and Menu.GragasCombo.qSet.useQ and ValidTarget(target, Ranges.Q) then
-				local qPosition, qChance = VP:GetLineCastPosition(target, skills.skillQ.delay, skills.skillQ.width, skills.skillQ.range, skills.skillQ.speed, myHero, false)
-
-			    if qPosition ~= nil and GetDistance(qPosition) < skills.skillQ.range and qChance >= 2 then
-			      CastSpell(_Q, qPosition.x, qPosition.z)
-			    end
-			end
-
 			if RREADY and Menu.GragasCombo.rSet.useR and ValidTarget(target, Ranges.R - 100) then
 				smartUltimate(target)
 			end
@@ -366,6 +358,14 @@ function AllInCombo(target, typeCombo)
 
 			    if ePosition ~= nil and GetDistance(ePosition) < skills.skillE.range and eChance >= 2 then
 			      CastSpell(_E, ePosition.x, ePosition.z)
+			    end
+			end
+
+			if QREADY and Menu.GragasCombo.qSet.useQ and ValidTarget(target, Ranges.Q) then
+				local qPosition, qChance = VP:GetCircularCastPosition(target, skills.skillQ.delay, skills.skillQ.width, skills.skillQ.range, skills.skillQ.speed, myHero, false)
+
+			    if qPosition ~= nil and GetDistance(qPosition) < skills.skillQ.range and qChance >= 2 then
+			      CastSpell(_Q, qPosition.x, qPosition.z)
 			    end
 			end
 		end
@@ -478,24 +478,26 @@ function animationCancel(unit, spell)
 end
 
 function smartUltimate(target)
-	if GetDistance(target) <= Ranges.R - 100 then
-		local x = target.x
-		local z = target.z
+	if GetDistance(target) <= Ranges.R - 300 then
+		local rPosition, rChance = VP:GetLineCastPosition(target, skills.skillR.delay, skills.skillR.width, skills.skillR.range, skills.skillR.speed, myHero, false)
+	    if rPosition ~= nil and rChance >= 2 then
+			local x = rPosition.x
+			local z = rPosition.z
 
-		if x < myHero.x then
-			x = x - 100
-		elseif x > myHero.x then
-			x = x + 100
-		end
+			if x < myHero.x then
+				x = x - 100
+			elseif x > myHero.x then
+				x = x + 100
+			end
 
-		if z < myHero.z then
-			z = z - 100
-		elseif z > myHero.z then
-			z = z + 100
-		end
+			if z < myHero.z then
+				z = z - 100
+			elseif z > myHero.z then
+				z = z + 100
+			end
 
-		CastSpell(_R, x, z)
-
+			CastSpell(_R, x, z)	    	
+	    end
 	end
 end
 
