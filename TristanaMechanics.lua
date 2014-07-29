@@ -9,13 +9,15 @@
 Changelog:
 
 0.79 - Fixed Draw Ranges
+0.80 - Minor Bug Fixed
+0.81 - AutoLevel Fixed
 
 ]]
 
 if myHero.charName ~= "Tristana" then return end
 
 
-local version = 0.79
+local version = 0.81
 local AUTOUPDATE = true
 
 
@@ -54,7 +56,7 @@ local ts = nil
 local VP = nil
 local qMode = false
 local qOff, wOff, eOff, rOff = 0,0,0,0
-local abilitySequence = {3, 2, 3, 1, 4, 1, 1, 1, 1, 3, 4, 2, 2, 2, 2, 4, 3, 3}
+local abilitySequence = {3, 2, 3, 1, 3, 4, 1, 1, 1, 1, 4, 2, 2, 2, 2, 4, 3, 3}
 local Ranges = { AA = 550 }
 local skills = {
     SkillQ = { ready = false, name = myHero:GetSpellData(_Q).name, range = Ranges.AA, delay = myHero:GetSpellData(_Q).delayTotalTimePercent, speed = myHero:GetSpellData(_Q).missileSpeed, width = myHero:GetSpellData(_Q).lineWidth },
@@ -577,12 +579,12 @@ function OnProcessSpell(unit, spell)
 
 end
 
-function Draw()
+function OnDraw()
     if not myHero.dead then
-        if Menu.drawings.drawAA then DrawCircle(myHero.x, myHero.y, myHero.z, Ranges.AA, 0xCCFF33) end
-        if Menu.drawings.drawQ then DrawCircle(myHero.x, myHero.y, myHero.z, skill.SkillQ.range, 0xF5F8ED) end
-        if Menu.drawings.drawW then DrawCircle(myHero.x, myHero.y, myHero.z, skill.SkillW.range, 0xF5F8ED) end
-        if Menu.drawings.drawE then DrawCircle(myHero.x, myHero.y, myHero.z, skill.SkillE.range, 0xF5F8ED) end
-        if Menu.drawings.drawR then DrawCircle(myHero.x, myHero.y, myHero.z, skill.SkillR.range, 0xF5F8ED) end
+        if Menu.drawings.drawAA then DrawCircle(myHero.x, myHero.y, myHero.z, Ranges.AA, ARGB(25 , 125, 125, 125)) end
+        if Menu.drawings.drawQ then DrawCircle(myHero.x, myHero.y, myHero.z, skills.SkillQ.range, ARGB(25 , 125, 125, 125)) end
+        if Menu.drawings.drawW then DrawCircle(myHero.x, myHero.y, myHero.z, skills.SkillW.range, ARGB(25 , 125, 125, 125)) end
+        if Menu.drawings.drawE then DrawCircle(myHero.x, myHero.y, myHero.z, skills.SkillE.range, ARGB(25 , 125, 125, 125)) end
+        if Menu.drawings.drawR then DrawCircle(myHero.x, myHero.y, myHero.z, skills.SkillR.range, ARGB(25 , 125, 125, 125)) end
     end
 end
