@@ -11,13 +11,14 @@ Changelog:
 0.79 - Fixed Draw Ranges
 0.80 - Minor Bug Fixed
 0.81 - AutoLevel Fixed
+0.85 - E to reset AA
 
 ]]
 
 if myHero.charName ~= "Tristana" then return end
 
 
-local version = 0.81
+local version = 0.85
 local AUTOUPDATE = true
 
 
@@ -251,10 +252,6 @@ end
 
 function Harass()	
 	if target ~= nil and ValidTarget(target) then
-		if Menu.Harass.useE and ValidTarget(target, skills.SkillE.range) and skills.SkillE.ready then
-			CastSpell(_E, target)
-		end
-
 		if Menu.Harass.useQ and ValidTarget(target, Ranges.AA) and skills.SkillQ.ready then
 			CastSpell(_Q)
 		end
@@ -288,9 +285,6 @@ function AllInCombo(target, typeCombo)
 			if skills.SkillR.ready and target ~= nil and ValidTarget(target, 645) and target.health < rDmg then
 				CastSpell(_R, target)
 			end
-		end
-		if Menu.TristanaCombo.eSet.useE and ValidTarget(target, Ranges.AA) and skills.SkillE.ready then
-			CastSpell(_E, target)
 		end
 
 		if Menu.TristanaCombo.qSet.useQ and ValidTarget(target, Ranges.AA) and skills.SkillQ.ready then
@@ -503,6 +497,16 @@ if GetGame().isOver then
 end
 
 function OnProcessSpell(unit, spell)
+	if unit.isMe and spell.target.type == myHero.type and spell.name:lower():find("attack") then
+		if Menu.TristanaCombo.eSet.useE and ValidTarget(target, Ranges.AA) and skills.SkillE.ready and Menu.TristanaCombo.combo then
+			CastSpell(_E, target)
+		end
+
+		if Menu.Harass.useE and ValidTarget(target, Ranges.AA) and skills.SkillE.ready and Menu.Harass.harass then
+			CastSpell(_E, target)
+		end
+	end
+
     if not Menu.Ads.antiGapCloser then return end
 
     local jarvanAddition = unit.charName == "JarvanIV" and unit:CanUseSpell(_Q) ~= READY and _R or _Q 
