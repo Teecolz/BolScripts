@@ -149,3 +149,90 @@ function TCPConnection:TCPLoadUrl(host, versionLink)
 		return string.sub(s, string.find(s, "<bols".."cript>")+11, string.find(s, "</bols".."cript>")-1)
 	end
 end
+
+--[[
+
+    ________                                         _________        .__               .__          __  .__               
+    \______ \ _____    _____ _____     ____   ____   \_   ___ \_____  |  |   ____  __ __|  | _____ _/  |_|__| ____   ____  
+     |    |  \\__  \  /     \\__  \   / ___\_/ __ \  /    \  \/\__  \ |  | _/ ___\|  |  \  | \__  \\   __\  |/  _ \ /    \ 
+     |    `   \/ __ \|  Y Y  \/ __ \_/ /_/  >  ___/  \     \____/ __ \|  |_\  \___|  |  /  |__/ __ \|  | |  (  <_> )   |  \
+    /_______  (____  /__|_|  (____  /\___  / \___  >  \______  (____  /____/\___  >____/|____(____  /__| |__|\____/|___|  /
+            \/     \/      \/     \//_____/      \/          \/     \/          \/                \/                    \/ 
+
+]]
+
+
+--[[ Kill Text ]]--
+TextList = {"Harass him", "Q", "W", "E", "ULT HIM !", "Items", "All In", "Skills Not Ready"}
+KillText = {}
+colorText = ARGB(229,229,229,0)
+_G.ShowTextDraw = true
+
+
+function OnDraw()
+  if _G.ShowTextDraw then
+    for i = 1, heroManager.iCount do
+    local enemy = heroManager:GetHero(i)
+    if ValidTarget(enemy) and enemy ~= nil then
+      local barPos = WorldToScreen(D3DXVECTOR3(enemy.x, enemy.y, enemy.z)) --(Credit to Zikkah)
+      local PosX = barPos.x - 35
+      local PosY = barPos.y - 10
+      if KillText[i] ~= 10 then
+        DrawText(TextList[KillText[i]], 16, PosX, PosY, colorText)
+      else
+        DrawText(TextList[KillText[i]] .. string.format("%4.1f", ((enemy.health - (qDmg + pDmg + eDmg + itemsDmg)) * (1/rDmg)) * 2.5) .. "s = Kill", 16, PosX, PosY, colorText)
+      end
+    end
+  end
+  end
+end
+
+-- Damage Calculation Thanks Skeem for the base --
+
+function DamageCalculation(skills, dfg)
+  for i=1, heroManager.iCount do
+    local enemy = heroManager:GetHero(i)
+    if ValidTarget(enemy) and enemy ~= nil then
+      qDmg = getDmg("Q", enemy,myHero)
+      wDmg = getDmg("W", enemy,myHero)
+      eDmg = getDmg("E", enemy,myHero)
+      rDmg = getDmg("R", enemy,myHero)
+      dfgDmg = getDmg("DFG", enemy, myHero)
+
+      if not skills.Q.ready and not skills.W.ready and not skills.E.ready and not skills.R.ready then
+        KillText[i] = TextList[8]
+        return
+      end
+
+      if enemy.health <= qDmg then
+        KillText[i] = TextList[2]
+      elseif enemy.health <= wDmg then
+        KillText[i] = TextList[3]
+      elseif enemy.health <= eDmg then
+        KillText[i] = TextList[4]
+      elseif enemy.health <= rDmg then
+        KillText[i] = TextList[5]
+      elseif enemy.health <= qDmg + wDmg then
+        KillText[i] = TextList[2] .."+".. TextList[3]
+      elseif enemy.health <= qDmg + eDmg then
+        KillText[i] = TextList[2] .."+".. TextList[4]
+      elseif enemy.health <= qDmg + rDmg then
+        KillText[i] = TextList[2] .."+".. TextList[5]
+      elseif enemy.health <= wDmg + eDmg then
+        KillText[i] = TextList[3] .."+".. TextList[4]
+      elseif enemy.health <= wDmg + rDmg then
+        KillText[i] = TextList[3] .."+".. TextList[5]
+      elseif enemy.health <= eDmg + rDmg then
+        KillText[i] = TextList[4] .."+".. TextList[5]
+      elseif enemy.health <= qDmg + wDmg + eDmg then
+        KillText[i] = TextList[2] .."+".. TextList[3] .."+".. TextList[4]
+      elseif enemy.health <= qDmg + wDmg + eDmg + rDmg then
+        KillText[i] = TextList[2] .."+".. TextList[3] .."+".. TextList[4] .."+".. TextList[5]
+      elseif enemy.health <= dfgDmg + ((qDmg + wDmg + eDmg + rDmg) + (0.2 * (qDmg + wDmg + eDmg + rDmg))) then
+        KillText[i] = TextList[7]
+      else
+        KillText[i] = TextList[1]
+      end
+    end
+  end
+end
