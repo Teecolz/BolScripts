@@ -6,12 +6,16 @@
 	\____|__  /__|    \____|__  /__|   |__| |__|\___  >____/|___|  /\____/
 	        \/                \/                    \/           \/
 
+Changelog:
+
+0.79 - Fixed Draw Ranges
+
 ]]
 
 if myHero.charName ~= "Tristana" then return end
 
 
-local version = 0.63
+local version = 0.79
 local AUTOUPDATE = true
 
 
@@ -54,7 +58,7 @@ local abilitySequence = {3, 2, 3, 1, 4, 1, 1, 1, 1, 3, 4, 2, 2, 2, 2, 4, 3, 3}
 local Ranges = { AA = 550 }
 local skills = {
     SkillQ = { ready = false, name = myHero:GetSpellData(_Q).name, range = Ranges.AA, delay = myHero:GetSpellData(_Q).delayTotalTimePercent, speed = myHero:GetSpellData(_Q).missileSpeed, width = myHero:GetSpellData(_Q).lineWidth },
-	SkillW = { ready = false, name = myHero:GetSpellData(_W).name, range = myHero:GetSpellData(_W).range, delay = myHero:GetSpellData(_W).delayTotalTimePercent, speed = myHero:GetSpellData(_W).missileSpeed, width = myHero:GetSpellData(_W).lineWidth },
+	SkillW = { ready = false, name = myHero:GetSpellData(_W).name, range = 900, delay = myHero:GetSpellData(_W).delayTotalTimePercent, speed = myHero:GetSpellData(_W).missileSpeed, width = myHero:GetSpellData(_W).lineWidth },
 	SkillE = { ready = false, name = myHero:GetSpellData(_E).name, range = Ranges.AA, delay = myHero:GetSpellData(_E).delayTotalTimePercent, speed = myHero:GetSpellData(_E).missileSpeed, width = myHero:GetSpellData(_E).lineWidth },
 	SkillR = { ready = false, name = myHero:GetSpellData(_R).name, range = Ranges.AA, delay = myHero:GetSpellData(_R).delayTotalTimePercent, speed = myHero:GetSpellData(_R).missileSpeed, width = myHero:GetSpellData(_R).lineWidth },
 }
@@ -173,12 +177,11 @@ function initComponents()
 	ts.name = "Focus"
 	
 	Menu:addSubMenu("["..myHero.charName.." - Drawings]", "drawings")
-	local DManager = DrawManager()
-	DManager:CreateCircle(myHero, Ranges.AA + (myHero.level * 8.5), 1, {255, 0, 255, 0}):AddToMenu(Menu.drawings,"AA range", true, true, true)
-	DManager:CreateCircle(myHero, skills.SkillQ.range, 1, {255, 0, 255, 0}):AddToMenu(Menu.drawings,"Q range", true, true, true)
-	DManager:CreateCircle(myHero, skills.SkillW.range, 1, {255, 0, 255, 0}):AddToMenu(Menu.drawings,"W range", true, true, true)
-	DManager:CreateCircle(myHero, Ranges.AA + (myHero.level * 8.5), 1, {255, 0, 255, 0}):AddToMenu(Menu.drawings,"E range", true, true, true)
-	DManager:CreateCircle(myHero, Ranges.AA + (myHero.level * 8.5), 1, {255, 0, 255, 0}):AddToMenu(Menu.drawings,"R range", true, true, true)
+	Menu.drawings:addParam("drawAA", "Draw AA Range", SCRIPT_PARAM_ONOFF, true)
+	Menu.drawings:addParam("drawQ", "Draw Q Range", SCRIPT_PARAM_ONOFF, true)
+	Menu.drawings:addParam("drawW", "Draw W Range", SCRIPT_PARAM_ONOFF, true)
+	Menu.drawings:addParam("drawE", "Draw E Range", SCRIPT_PARAM_ONOFF, true)
+	Menu.drawings:addParam("drawR", "Draw R Range", SCRIPT_PARAM_ONOFF, true)
 	
 	targetMinions = minionManager(MINION_ENEMY, 360, myHero, MINION_SORT_MAXHEALTH_DEC)
 	allyMinions = minionManager(MINION_ALLY, 360, myHero, MINION_SORT_MAXHEALTH_DEC)
@@ -234,7 +237,7 @@ function CDHandler()
 	skills.SkillW.ready = (myHero:CanUseSpell(_W) == READY)
 	skills.SkillE.ready = (myHero:CanUseSpell(_E) == READY)
 	skills.SkillR.ready = (myHero:CanUseSpell(_R) == READY)
-	Ranges.AA = myHero.range
+
 	-- Items
 	tiamatSlot = GetInventorySlotItem(3077)
 	hydraSlot = GetInventorySlotItem(3074)
@@ -301,7 +304,7 @@ end
 function AllInCombo(target, typeCombo)
 	if target ~= nil and typeCombo == 0 then
 		ItemUsage(target)
-		if skills.SkillR.ready and Menu.TristanaCombo.rSet.useR and ValidTarget(target, skills.SkillR.range) then
+		if skills.SkillR.ready and Menu.TristanaCombo.rSet.useR and ValidTarget(target, Ranges.AA) then
 			rDmg = getDmg("R", target, myHero)
 
 			if skills.SkillR.ready and target ~= nil and ValidTarget(target, 645) and target.health < rDmg then
@@ -574,6 +577,12 @@ function OnProcessSpell(unit, spell)
 
 end
 
-function OnDraw()
-	
+function Draw()
+    if not myHero.dead then
+        if Menu.drawings.drawAA then DrawCircle(myHero.x, myHero.y, myHero.z, Ranges.AA, 0xCCFF33) end
+        if Menu.drawings.drawQ then DrawCircle(myHero.x, myHero.y, myHero.z, skill.SkillQ.range, 0xF5F8ED) end
+        if Menu.drawings.drawW then DrawCircle(myHero.x, myHero.y, myHero.z, skill.SkillW.range, 0xF5F8ED) end
+        if Menu.drawings.drawE then DrawCircle(myHero.x, myHero.y, myHero.z, skill.SkillE.range, 0xF5F8ED) end
+        if Menu.drawings.drawR then DrawCircle(myHero.x, myHero.y, myHero.z, skill.SkillR.range, 0xF5F8ED) end
+    end
 end
