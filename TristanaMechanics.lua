@@ -12,6 +12,7 @@ Changelog:
 0.80 - Minor Bug Fixed
 0.81 - AutoLevel Fixed
 0.85 - E to reset AA
+0.89 - Fixed Range of AA
 
 ]]
 
@@ -234,7 +235,12 @@ function CDHandler()
 	dfgReady = (dfgSlot ~= nil and myHero:CanUseSpell(dfgSlot) == READY)
 	divineReady = (divineSlot ~= nil and myHero:CanUseSpell(divineSlot) == READY)
 
-	Ranges.AA = 550 + (myHero.level * 8.5)
+	if myHero.level > 1 then
+		Ranges.AA = 550 + (myHero.level * 8.5)
+	else
+		Ranges.AA = 550
+	end
+
 	skills.SkillE.range = Ranges.AA
 	skills.SkillR.range = Ranges.AA
 	skills.SkillQ.range = Ranges.AA
