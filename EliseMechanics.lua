@@ -6,12 +6,13 @@
 	\____|__  /__|    \____|__  /__|   |__| |__|\___  >____/|___|  /\____/
 	        \/                \/                    \/           \/
 
+0.35 - Updated Ranges
 ]]
 
 if myHero.charName ~= "Elise" then return end
 
 
-local version = 0.31
+local version = 0.35
 local AUTOUPDATE = true
 
 
@@ -58,7 +59,7 @@ local Ranges = { AA = 550 }
 local skills = {
     Q = { ready = false, name = myHero:GetSpellData(_Q).name, range = 625, delay = myHero:GetSpellData(_Q).delayTotalTimePercent, speed = myHero:GetSpellData(_Q).missileSpeed, width = myHero:GetSpellData(_Q).lineWidth },
 	W = { ready = false, name = myHero:GetSpellData(_W).name, range = 950, delay = 0.25, speed = 1000, width = 100 },
-	E = { ready = false, name = myHero:GetSpellData(_E).name, range = 1075, delay = 0.25, speed = 1300, width = 90 },
+	E = { ready = false, name = myHero:GetSpellData(_E).name, range = 750, delay = 0.25, speed = 1300, width = 55 },
 	R = { ready = false, name = myHero:GetSpellData(_R).name, range = 0, delay = myHero:GetSpellData(_R).delayTotalTimePercent, speed = myHero:GetSpellData(_R).missileSpeed, width = myHero:GetSpellData(_R).lineWidth },
 }
 
