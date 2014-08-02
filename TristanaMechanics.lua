@@ -14,13 +14,14 @@ Changelog:
 0.85 - E to reset AA
 0.89 - Fixed Range of AA
 0.90 - Fixed E logic
+0.91 - New AbilitySequence
 
 ]]
 
 if myHero.charName ~= "Tristana" then return end
 
 
-local version = 0.90
+local version = 0.91
 local AUTOUPDATE = true
 
 
@@ -58,7 +59,7 @@ local ts = nil
 local VP = nil
 local qMode = false
 local qOff, wOff, eOff, rOff = 0,0,0,0
-local abilitySequence = {3, 2, 3, 1, 3, 4, 1, 1, 1, 1, 4, 2, 2, 2, 2, 4, 3, 3}
+local abilitySequence = {3, 2, 3, 1, 3, 4, 1, 1, 1, 1, 4, 3, 3, 2, 2, 4, 2, 2}
 local Ranges = { AA = 600 }
 local skills = {
     SkillQ = { ready = false, name = myHero:GetSpellData(_Q).name, range = Ranges.AA, delay = myHero:GetSpellData(_Q).delayTotalTimePercent, speed = myHero:GetSpellData(_Q).missileSpeed, width = myHero:GetSpellData(_Q).lineWidth },
