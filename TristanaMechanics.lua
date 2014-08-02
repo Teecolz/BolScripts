@@ -19,11 +19,34 @@ Changelog:
 if myHero.charName ~= "Tristana" then return end
 
 
-local version = 0.85
+local version = 0.89
 local AUTOUPDATE = true
 
 
 local SCRIPT_NAME = "TristanaMechanics"
+local SOURCELIB_URL = "https://raw.github.com/TheRealSource/public/master/common/SourceLib.lua"
+local SOURCELIB_PATH = LIB_PATH.."SourceLib.lua"
+if FileExist(SOURCELIB_PATH) then
+	require("SourceLib")
+else
+	DOWNLOADING_SOURCELIB = true
+	DownloadFile(SOURCELIB_URL, SOURCELIB_PATH, function() print("Required libraries downloaded successfully, please reload") end)
+end
+
+if DOWNLOADING_SOURCELIB then print("Downloading required libraries, please wait...") return end
+
+if AUTOUPDATE then
+	SourceUpdater(SCRIPT_NAME, version, "raw.github.com", "/gmlyra/BolScripts/master/"..SCRIPT_NAME..".lua", SCRIPT_PATH .. GetCurrentEnv().FILE_NAME, "/gmlyra/BolScripts/master/VersionFiles/"..SCRIPT_NAME..".version"):CheckUpdate()
+end
+
+local RequireI = Require("SourceLib")
+RequireI:Add("vPrediction", "https://raw.github.com/Hellsing/BoL/master/common/VPrediction.lua")
+RequireI:Add("SOW", "https://raw.github.com/Hellsing/BoL/master/common/SOW.lua")
+
+RequireI:Check()
+
+if RequireI.downloadNeeded == true then return end
+
 
 require 'VPrediction'
 require 'SOW'
@@ -35,7 +58,7 @@ local VP = nil
 local qMode = false
 local qOff, wOff, eOff, rOff = 0,0,0,0
 local abilitySequence = {3, 2, 3, 1, 3, 4, 1, 1, 1, 1, 4, 2, 2, 2, 2, 4, 3, 3}
-local Ranges = { AA = 550 }
+local Ranges = { AA = 600 }
 local skills = {
     SkillQ = { ready = false, name = myHero:GetSpellData(_Q).name, range = Ranges.AA, delay = myHero:GetSpellData(_Q).delayTotalTimePercent, speed = myHero:GetSpellData(_Q).missileSpeed, width = myHero:GetSpellData(_Q).lineWidth },
 	SkillW = { ready = false, name = myHero:GetSpellData(_W).name, range = 900, delay = myHero:GetSpellData(_W).delayTotalTimePercent, speed = myHero:GetSpellData(_W).missileSpeed, width = myHero:GetSpellData(_W).lineWidth },
@@ -236,9 +259,9 @@ function CDHandler()
 	divineReady = (divineSlot ~= nil and myHero:CanUseSpell(divineSlot) == READY)
 
 	if myHero.level > 1 then
-		Ranges.AA = 550 + (myHero.level * 8.5)
+		Ranges.AA = 600 + (myHero.level * 8.5)
 	else
-		Ranges.AA = 550
+		Ranges.AA = Ranges.AA
 	end
 
 	skills.SkillE.range = Ranges.AA
