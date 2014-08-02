@@ -13,13 +13,14 @@ Changelog:
 0.81 - AutoLevel Fixed
 0.85 - E to reset AA
 0.89 - Fixed Range of AA
+0.90 - Fixed E logic
 
 ]]
 
 if myHero.charName ~= "Tristana" then return end
 
 
-local version = 0.89
+local version = 0.90
 local AUTOUPDATE = true
 
 
@@ -526,9 +527,11 @@ if GetGame().isOver then
 end
 
 function OnProcessSpell(unit, spell)
-	if unit.isMe and spell.target.type == myHero.type and spell.name:lower():find("attack") then
-		if Menu.TristanaCombo.eSet.useE and ValidTarget(target, Ranges.AA) and skills.SkillE.ready and Menu.TristanaCombo.combo then
-			CastSpell(_E, target)
+	if unit.isMe and spell.name:lower():find("attack") then
+		if spell.target.type == myHero.type then
+			if Menu.TristanaCombo.eSet.useE and ValidTarget(target, Ranges.AA) and skills.SkillE.ready and Menu.TristanaCombo.combo then
+				CastSpell(_E, target)
+			end
 		end
 
 		if Menu.Harass.useE and ValidTarget(target, Ranges.AA) and skills.SkillE.ready and Menu.Harass.harass then
